@@ -1,14 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Laravel\Doctor\Tests\Fixtures\Diagnostics;
 
-use Laravel\Doctor\Diagnostics\Diagnostic;
+use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use RuntimeException;
 
-final class ThrowingDiagnostic extends Diagnostic
+class ThrowingDiagnostic extends Diagnostic
 {
     public string $name = 'Testing diagnostic throws';
 

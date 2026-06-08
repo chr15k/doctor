@@ -1,16 +1,14 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Laravel\Doctor\Tests\Fixtures\Diagnostics;
 
 use Laravel\Doctor\Contracts\Fixable;
-use Laravel\Doctor\Diagnostics\Diagnostic;
+use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use RuntimeException;
 
-final class ThrowingFixDiagnostic extends Diagnostic implements Fixable
+class ThrowingFixDiagnostic extends Diagnostic implements Fixable
 {
     public string $name = 'Testing diagnostic fix throws';
 
@@ -18,7 +16,9 @@ final class ThrowingFixDiagnostic extends Diagnostic implements Fixable
 
     public function check(): DiagnosticResult
     {
-        return DiagnosticResult::fail('The diagnostic failed.');
+        return DiagnosticResult::fail('The diagnostic failed.')
+            ->confirmUsing('Fix the testing diagnostic?')
+            ->suggest('Apply the testing diagnostic fix.');
     }
 
     public function fix(DiagnosticResult $result): FixResult

@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Laravel\Doctor\Tests\Fixtures\Diagnostics;
 
-use Laravel\Doctor\Diagnostics\Diagnostic;
+use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 
-final class WarningDiagnostic extends Diagnostic
+class WarningDiagnostic extends Diagnostic
 {
     public string $name = 'Testing diagnostic warns';
 
@@ -17,6 +15,6 @@ final class WarningDiagnostic extends Diagnostic
     {
         return DiagnosticResult::warn('The diagnostic warned.')
             ->withDetails('This warning fixture simulates a non-fixable issue.')
-            ->command('php artisan doctor --only=WarningDiagnostic', 'Re-run this diagnostic after addressing the warning.');
+            ->suggest('Re-run this diagnostic after addressing the warning.');
     }
 }

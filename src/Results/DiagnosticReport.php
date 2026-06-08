@@ -1,23 +1,25 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Laravel\Doctor\Results;
 
 class DiagnosticReport
 {
     /**
+     * Create a new diagnostic report instance.
+     *
      * @param  list<DiagnosticOutcome>  $diagnostics
      * @param  list<DiagnosticFixOutcome>  $fixes
      */
     public function __construct(
-        private readonly array $diagnostics = [],
-        private readonly array $fixes = [],
+        protected array $diagnostics = [],
+        protected array $fixes = [],
     ) {
         //
     }
 
     /**
+     * Get the diagnostic outcomes.
+     *
      * @return list<DiagnosticOutcome>
      */
     public function diagnostics(): array
@@ -26,6 +28,8 @@ class DiagnosticReport
     }
 
     /**
+     * Get the diagnostic fix outcomes.
+     *
      * @return list<DiagnosticFixOutcome>
      */
     public function fixes(): array
@@ -34,13 +38,18 @@ class DiagnosticReport
     }
 
     /**
+     * Add fix outcomes to the report.
+     *
      * @param  list<DiagnosticFixOutcome>  $fixes
      */
     public function withFixes(array $fixes): self
     {
-        return new self($this->diagnostics, $fixes);
+        return new self($this->diagnostics, [...$this->fixes, ...$fixes]);
     }
 
+    /**
+     * Determine whether the report has failures.
+     */
     public function hasFailures(): bool
     {
         foreach ($this->diagnostics as $outcome) {
@@ -62,6 +71,9 @@ class DiagnosticReport
         return false;
     }
 
+    /**
+     * Determine whether the report has warnings.
+     */
     public function hasWarnings(): bool
     {
         foreach ($this->diagnostics as $outcome) {
@@ -83,13 +95,13 @@ class DiagnosticReport
         return false;
     }
 
-    private function hasPassingFixFor(DiagnosticOutcome $diagnostic): bool
+    /**
+     * Determine whether the diagnostic has a passing fix.
+     */
+    public function hasPassingFixFor(DiagnosticOutcome $diagnostic): bool
     {
         foreach ($this->fixes as $fix) {
-            if (
-                $fix->registration?->diagnostic === $diagnostic->registration?->diagnostic
-                && $fix->result->status === Status::Pass
-            ) {
+            if ($fix->diagnostic === $diagnostic->diagnostic && $fix->result->status === Status::Pass) {
                 return true;
             }
         }

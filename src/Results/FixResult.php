@@ -1,68 +1,96 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Laravel\Doctor\Results;
 
-use InvalidArgumentException;
-
-final class FixResult
+/**
+ * @phpstan-consistent-constructor
+ */
+class FixResult
 {
+    public ?string $details = null;
+
     /**
-     * @param  array<string, mixed>  $context
+     * The structured context for the result.
+     *
+     * @var array<string, mixed>
+     */
+    public array $context = [];
+
+    /**
+     * Create a new fix result instance.
      */
     public function __construct(
-        public readonly Status $status,
-        public readonly string $summary,
-        public readonly ?string $details = null,
-        public readonly array $context = [],
+        public Status $status,
+        public string $summary,
     ) {
-        if ($summary === '') {
-            throw new InvalidArgumentException('Fix result summaries may not be empty.');
-        }
+        //
     }
 
+    /**
+     * Create a passing fix result.
+     */
     public static function pass(string $summary = 'Fixed'): static
     {
-        return new self(Status::Pass, $summary);
+        return new static(Status::Pass, $summary);
     }
 
+    /**
+     * Create a warning fix result.
+     */
     public static function warn(string $summary): static
     {
         return new static(Status::Warn, $summary);
     }
 
+    /**
+     * Create a notice fix result.
+     */
+    public static function notice(string $summary): static
+    {
+        return new static(Status::Notice, $summary);
+    }
+
+    /**
+     * Create a failing fix result.
+     */
     public static function fail(string $summary): static
     {
         return new static(Status::Fail, $summary);
     }
 
+    /**
+     * Create a skipped fix result.
+     */
     public static function skip(string $summary): static
     {
         return new static(Status::Skip, $summary);
     }
 
+    /**
+     * Create an error fix result.
+     */
     public static function error(string $summary): static
     {
         return new static(Status::Error, $summary);
     }
 
+    /**
+     * Add details to the fix result.
+     */
     public function withDetails(string $details): static
     {
-        return new static($this->status, $this->summary, $details, $this->context);
+        $this->details = $details;
+
+        return $this;
     }
 
+    /**
+     * Add context to the fix result.
+     */
     public function withContext(string $key, mixed $value): static
     {
-        if ($key === '') {
-            throw new InvalidArgumentException('Fix result context keys may not be empty.');
-        }
+        $this->context[$key] = $value;
 
-        return new static(
-            $this->status,
-            $this->summary,
-            $this->details,
-            [...$this->context, $key => $value],
-        );
+        return $this;
     }
 }

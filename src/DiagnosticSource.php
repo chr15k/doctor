@@ -1,8 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
-namespace Laravel\Doctor\Support;
+namespace Laravel\Doctor;
 
 use Composer\InstalledVersions;
 use ReflectionClass;
@@ -16,6 +14,8 @@ class DiagnosticSource
     private static array $packages = [];
 
     /**
+     * Resolve the Composer package for the given diagnostic class.
+     *
      * @param  class-string  $class
      */
     public static function package(string $class): ?string
@@ -28,9 +28,29 @@ class DiagnosticSource
     }
 
     /**
+     * Resolve the user-facing source label for the given diagnostic class.
+     *
      * @param  class-string  $class
      */
-    private static function resolvePackage(string $class): ?string
+    public static function source(string $class): string
+    {
+        $package = self::package($class);
+
+        if ($package !== null) {
+            return 'package ['.$package.']';
+        }
+
+        return str_starts_with($class, 'Laravel\\Doctor\\Diagnostics\\')
+            ? 'doctor'
+            : 'application';
+    }
+
+    /**
+     * Resolve the Composer package for the given diagnostic class.
+     *
+     * @param  class-string  $class
+     */
+    protected static function resolvePackage(string $class): ?string
     {
         $file = self::classFile($class);
 
@@ -44,9 +64,11 @@ class DiagnosticSource
     }
 
     /**
+     * Resolve the file path for the given class.
+     *
      * @param  class-string  $class
      */
-    private static function classFile(string $class): ?string
+    protected static function classFile(string $class): ?string
     {
         try {
             $file = (new ReflectionClass($class))->getFileName();
@@ -63,7 +85,10 @@ class DiagnosticSource
         return $realPath === false ? null : $realPath;
     }
 
-    private static function installedPackageForFile(string $file): ?string
+    /**
+     * Find the installed Composer package that contains a file.
+     */
+    protected static function installedPackageForFile(string $file): ?string
     {
         $match = null;
         $matchLength = -1;
@@ -96,7 +121,10 @@ class DiagnosticSource
         return $match;
     }
 
-    private static function contains(string $directory, string $file): bool
+    /**
+     * Determine whether a directory contains a file.
+     */
+    protected static function contains(string $directory, string $file): bool
     {
         return $file === $directory || str_starts_with($file, $directory.DIRECTORY_SEPARATOR);
     }

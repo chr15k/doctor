@@ -1,11 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
-arch('strict types')
-    ->expect('Laravel\Doctor')
-    ->toUseStrictTypes();
-
 arch('no debugging')
     ->expect(['dd', 'dump', 'var_dump', 'die', 'ray'])
     ->not->toBeUsed();

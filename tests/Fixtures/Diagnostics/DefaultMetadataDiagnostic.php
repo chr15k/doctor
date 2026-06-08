@@ -5,12 +5,8 @@ namespace Laravel\Doctor\Tests\Fixtures\Diagnostics;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 
-class PassingDiagnostic extends Diagnostic
+class DefaultMetadataDiagnostic extends Diagnostic
 {
-    public string $name = 'Testing diagnostic passes';
-
-    public string $group = 'testing';
-
     public function check(): DiagnosticResult
     {
         return DiagnosticResult::pass('The diagnostic passed.');

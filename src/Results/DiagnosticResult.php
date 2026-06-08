@@ -1,119 +1,142 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Laravel\Doctor\Results;
 
-use InvalidArgumentException;
-
-final class DiagnosticResult
+/**
+ * @phpstan-consistent-constructor
+ */
+class DiagnosticResult
 {
+    public ?string $details = null;
+
     /**
-     * @param  list<Remediation>  $remediation
-     * @param  array<string, string>  $links
-     * @param  array<string, mixed>  $context
+     * The remediation messages for the result.
+     *
+     * @var list<string>
+     */
+    public array $remediation = [];
+
+    /**
+     * The documentation links for the result.
+     *
+     * @var array<string, string>
+     */
+    public array $links = [];
+
+    /**
+     * The structured context for the result.
+     *
+     * @var array<string, mixed>
+     */
+    public array $context = [];
+
+    public ?string $confirmation = null;
+
+    /**
+     * Create a new diagnostic result instance.
      */
     public function __construct(
-        public readonly Status $status,
-        public readonly string $summary,
-        public readonly ?string $details = null,
-        public readonly array $remediation = [],
-        public readonly array $links = [],
-        public readonly array $context = [],
+        public Status $status,
+        public string $summary,
     ) {
-        if ($summary === '') {
-            throw new InvalidArgumentException('Diagnostic result summaries may not be empty.');
-        }
+        //
     }
 
+    /**
+     * Create a passing diagnostic result.
+     */
     public static function pass(string $summary = 'Passed'): static
     {
-        return new self(Status::Pass, $summary);
+        return new static(Status::Pass, $summary);
     }
 
+    /**
+     * Create a warning diagnostic result.
+     */
     public static function warn(string $summary): static
     {
         return new static(Status::Warn, $summary);
     }
 
+    /**
+     * Create a notice diagnostic result.
+     */
+    public static function notice(string $summary): static
+    {
+        return new static(Status::Notice, $summary);
+    }
+
+    /**
+     * Create a failing diagnostic result.
+     */
     public static function fail(string $summary): static
     {
         return new static(Status::Fail, $summary);
     }
 
+    /**
+     * Create a skipped diagnostic result.
+     */
     public static function skip(string $summary): static
     {
         return new static(Status::Skip, $summary);
     }
 
+    /**
+     * Create an error diagnostic result.
+     */
     public static function error(string $summary): static
     {
         return new static(Status::Error, $summary);
     }
 
+    /**
+     * Add details to the diagnostic result.
+     */
     public function withDetails(string $details): static
     {
-        return new static(
-            $this->status,
-            $this->summary,
-            $details,
-            $this->remediation,
-            $this->links,
-            $this->context,
-        );
+        $this->details = $details;
+
+        return $this;
     }
 
+    /**
+     * Add remediation text to the diagnostic result.
+     */
     public function suggest(string $message): static
     {
-        return $this->withRemediation(Remediation::message($message));
+        $this->remediation[] = $message;
+
+        return $this;
     }
 
-    public function command(string $command, ?string $message = null): static
+    /**
+     * Set the confirmation prompt for the diagnostic fix.
+     */
+    public function confirmUsing(string $prompt): static
     {
-        return $this->withRemediation(Remediation::command($command, $message));
+        $this->confirmation = $prompt;
+
+        return $this;
     }
 
+    /**
+     * Add a documentation link to the diagnostic result.
+     */
     public function link(string $label, string $url): static
     {
-        if ($label === '' || $url === '') {
-            throw new InvalidArgumentException('Diagnostic result links require a label and URL.');
-        }
+        $this->links[$label] = $url;
 
-        return new static(
-            $this->status,
-            $this->summary,
-            $this->details,
-            $this->remediation,
-            [...$this->links, $label => $url],
-            $this->context,
-        );
+        return $this;
     }
 
+    /**
+     * Add context to the diagnostic result.
+     */
     public function withContext(string $key, mixed $value): static
     {
-        if ($key === '') {
-            throw new InvalidArgumentException('Diagnostic result context keys may not be empty.');
-        }
+        $this->context[$key] = $value;
 
-        return new static(
-            $this->status,
-            $this->summary,
-            $this->details,
-            $this->remediation,
-            $this->links,
-            [...$this->context, $key => $value],
-        );
-    }
-
-    private function withRemediation(Remediation $remediation): static
-    {
-        return new static(
-            $this->status,
-            $this->summary,
-            $this->details,
-            [...$this->remediation, $remediation],
-            $this->links,
-            $this->context,
-        );
+        return $this;
     }
 }
