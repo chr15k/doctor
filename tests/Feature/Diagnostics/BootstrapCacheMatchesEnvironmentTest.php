@@ -1,0 +1,64 @@
+<?php
+
+use Laravel\Doctor\Diagnostics\BootstrapCacheMatchesEnvironment;
+
+function doctor_cached_bootstrap_base_path(): string
+{
+    $basePath = sys_get_temp_dir().'/laravel-doctor-cached-bootstrap-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($basePath.'/bootstrap/cache', 0775, true);
+    mkdir($basePath.'/storage/framework/views', 0775, true);
+
+    return $basePath;
+}
+
+it('passes when bootstrap files are not cached locally', function (): void {
+    $basePath = doctor_cached_bootstrap_base_path();
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    config(['app.env' => 'local']);
+    config(['view.compiled' => $basePath.'/storage/framework/views']);
+
+    $result = (new BootstrapCacheMatchesEnvironment)->check();
+
+    expect($result->status->value)->toBe('pass')
+        ->and($result->summary)->toBe('Laravel bootstrap files are not cached.');
+});
+
+it('notices when bootstrap files are cached locally', function (): void {
+    $basePath = doctor_cached_bootstrap_base_path();
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    config(['app.env' => 'local']);
+    config(['view.compiled' => $basePath.'/storage/framework/views']);
+
+    file_put_contents($this->app->getCachedConfigPath(), '<?php return [];');
+    file_put_contents($this->app->getCachedEventsPath(), '<?php return [];');
+    file_put_contents($this->app->getCachedRoutesPath(), '<?php return [];');
+    file_put_contents($basePath.'/storage/framework/views/example.php', '<?php echo "cached";');
+
+    $result = (new BootstrapCacheMatchesEnvironment)->check();
+
+    expect($result->status->value)->toBe('notice')
+        ->and($result->summary)->toBe('Config, events, routes, and views are cached.')
+        ->and($result->details)->toBeNull()
+        ->and($result->remediation[0])->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.');
+});
+
+it('passes when bootstrap files are cached outside local environments', function (): void {
+    $basePath = doctor_cached_bootstrap_base_path();
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    $this->app->detectEnvironment(fn (): string => 'production');
+    config(['view.compiled' => $basePath.'/storage/framework/views']);
+
+    file_put_contents($this->app->getCachedConfigPath(), '<?php return [];');
+
+    $result = (new BootstrapCacheMatchesEnvironment)->check();
+
+    expect($result->status->value)->toBe('pass')
+        ->and($result->summary)->toBe('Laravel bootstrap files are cached.');
+});
