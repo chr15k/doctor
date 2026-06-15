@@ -2,7 +2,7 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
@@ -35,11 +35,11 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
      */
     public function fix(DiagnosticResult $result): FixResult
     {
-        $process = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'key:generate']);
+        $exitCode = Artisan::call('key:generate');
 
-        if (! $process->successful()) {
+        if ($exitCode !== 0) {
             return FixResult::fail('The application key could not be generated.')
-                ->withDetails(trim($process->errorOutput() !== '' ? $process->errorOutput() : $process->output()));
+                ->withDetails(trim(Artisan::output()));
         }
 
         return FixResult::pass('The application key was generated.');

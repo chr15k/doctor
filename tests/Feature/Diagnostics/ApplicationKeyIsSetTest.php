@@ -1,7 +1,6 @@
 <?php
 
-use Illuminate\Process\PendingProcess;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
@@ -35,26 +34,43 @@ it('reports a missing application key', function (): void {
 });
 
 it('generates an application key when fixed', function (): void {
-    Process::fake([
-        '*' => Process::result(output: 'Application key set successfully.'),
-    ]);
+    $artisan = new class
+    {
+        public array $calls = [];
+
+        public function call(string $command): int
+        {
+            $this->calls[] = $command;
+
+            return 0;
+        }
+    };
+
+    Artisan::swap($artisan);
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,
         DiagnosticResult::fail('Laravel does not have an application key.'),
     ));
 
-    Process::assertRan(fn (PendingProcess $process): bool => $process->command === [PHP_BINARY, 'artisan', 'key:generate']
-        && $process->path === base_path());
-
     expect($fix->result->status->value)->toBe('pass')
-        ->and($fix->result->summary)->toBe('The application key was generated.');
+        ->and($fix->result->summary)->toBe('The application key was generated.')
+        ->and($artisan->calls)->toBe(['key:generate']);
 });
 
 it('reports when application key generation fails', function (): void {
-    Process::fake([
-        '*' => Process::result(errorOutput: 'Unable to write key.', exitCode: 1),
-    ]);
+    Artisan::swap(new class
+    {
+        public function call(string $command): int
+        {
+            return 1;
+        }
+
+        public function output(): string
+        {
+            return 'Unable to write key.';
+        }
+    });
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,

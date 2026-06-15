@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Diagnostics\AsynchronousQueueIsConfigured;
@@ -35,9 +34,12 @@ it('does not redefine Symfony console verbosity options', function (): void {
 it('does not repeat diagnostics that were fixed', function (): void {
     config(['app.key' => '']);
 
-    Process::fake([
-        '*' => Process::result(output: 'Application key set successfully.'),
-    ]);
+    $environmentPath = sys_get_temp_dir().'/laravel-doctor-key-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($environmentPath, 0775, true);
+    file_put_contents($environmentPath.'/.env', "APP_KEY=\n");
+
+    $this->app->useEnvironmentPath($environmentPath);
 
     $this->artisan('doctor --only=ApplicationKeyIsSet --fix')
         ->expectsOutputToContain('[pass] fix Application key is set (doctor): The application key was generated.')

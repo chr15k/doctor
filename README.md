@@ -42,7 +42,7 @@ php artisan doctor --fix
 ```
 
 > [!NOTE]
-> Fixes are only available with the default CLI output. Doctor rejects `--fix` when `--format=json` or `--format=github` is selected so machine-readable reports never mutate the application.
+> Fixes are only available with the default CLI output. Doctor rejects `--fix` with JSON or GitHub [output formats](#output-formats) so machine-readable reports never mutate the application.
 
 ## Diagnostic Statuses
 
@@ -56,6 +56,8 @@ Every diagnostic returns one of the following statuses. Doctor uses them to rend
 | `fail`   | The check found a problem that should be resolved.      | Yes                        |
 | `skip`   | The check did not apply to the current environment.     | No                         |
 | `error`  | The diagnostic threw an exception while running.        | Yes                        |
+
+By default, the command exits with a failing status when a diagnostic fails or errors. Use `--fail-on=warn` to also fail on warnings, or `--fail-on=never` when Doctor should only report issues.
 
 ## Selecting Diagnostics
 
@@ -94,88 +96,65 @@ A diagnostic is a single class that, like an Artisan command, can declare its de
 
 To offer a fix, implement the `Laravel\Doctor\Contracts\Fixable` contract. Doctor only attempts a fix on diagnostics that implement it.
 
-The following diagnostic checks whether the configured SQLite database exists. Because creating the file is safe, it implements `Fixable`:
+The following diagnostic checks whether the application key is set. Because Laravel already provides a safe key generator, it implements `Fixable`:
 
 ```php
 <?php
 
 namespace App\Doctor\Diagnostics;
 
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
-use Illuminate\Support\Facades\File;
 
-class SqliteDatabaseExists extends Diagnostic implements Fixable
+class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
-    public string $name = 'SQLite database exists';
+    public string $name = 'Application key is set';
 
-    public string $group = 'database';
+    public string $group = 'environment';
 
     public function check(): DiagnosticResult
     {
-        if (config('database.default') !== 'sqlite') {
-            return DiagnosticResult::skip('The default database connection is not SQLite.');
+        $key = config('app.key');
+
+        if (is_string($key) && trim($key) !== '') {
+            return DiagnosticResult::pass('Laravel has an application key.');
         }
 
-        $database = config('database.connections.sqlite.database');
-
-        if (! is_string($database) || $database === '' || $database === ':memory:') {
-            return DiagnosticResult::skip('The SQLite connection does not use a database file.');
-        }
-
-        if (! str_starts_with($database, DIRECTORY_SEPARATOR)) {
-            $database = base_path($database);
-        }
-
-        if (is_file($database)) {
-            return DiagnosticResult::pass('The SQLite database file exists.')
-                ->withContext('database', $database);
-        }
-
-        return DiagnosticResult::fail('The SQLite database file does not exist.')
-            ->withContext('database', $database)
-            ->confirmUsing('Would you like Doctor to create the SQLite database file?')
-            ->suggest('Create the SQLite database file at the configured path.');
+        return DiagnosticResult::fail('Laravel does not have an application key.')
+            ->confirmUsing('Would you like Doctor to generate an application key using `artisan key:generate`?')
+            ->suggest('Generate an application key with `php artisan key:generate`.');
     }
 
     public function fix(DiagnosticResult $result): FixResult
     {
-        $database = $result->context['database'] ?? null;
+        $exitCode = Artisan::call('key:generate');
 
-        if (! is_string($database) || $database === '') {
-            return FixResult::fail('The SQLite database file path was not available from the diagnostic result.');
+        if ($exitCode !== 0) {
+            return FixResult::fail('The application key could not be generated.')
+                ->withDetails(trim(Artisan::output()));
         }
 
-        if (is_file($database)) {
-            return FixResult::skip('The SQLite database file already exists.');
-        }
-
-        File::ensureDirectoryExists(dirname($database));
-
-        if (File::put($database, '') === false) {
-            return FixResult::fail('The SQLite database file could not be created.');
-        }
-
-        return FixResult::pass('The SQLite database file was created.');
+        return FixResult::pass('The application key was generated.');
     }
 }
 ```
 
-The `check` method detects the problem and can attach structured context to the result with `withContext()`. Fixable diagnostics can set the interactive prompt with `confirmUsing()`. Suggestions added with `suggest()` are rendered as remediation text, and links added with `link()` are rendered in CLI, JSON, and GitHub output. The `fix` method receives the failing result and should use that context instead of recomputing the same state. Implement `Fixable` only when the repair is predictable and safe.
+Diagnostics should explain what failed and how to recover. Use `suggest()` for remediation text, `link()` for relevant documentation, and `confirmUsing()` when a fix needs a more specific prompt. If the check gathers state the fix will need, store it with `withContext()` on the result. Only implement `Fixable` when the repair is predictable and safe.
 
 ## Registering Diagnostics
 
 Applications may register diagnostics through the Doctor facade, typically from a service provider:
 
 ```php
-use App\Doctor\Diagnostics\SqliteDatabaseExists;
+use App\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Facades\Doctor;
 
 public function boot(): void
 {
-    Doctor::diagnostic(SqliteDatabaseExists::class);
+    Doctor::diagnostic(ApplicationKeyIsSet::class);
 }
 ```
 
@@ -183,15 +162,21 @@ Packages use the same registration API from their service providers:
 
 ```php
 use Laravel\Doctor\Facades\Doctor;
-use Vendor\Package\Diagnostics\SqliteDatabaseExists;
+use Vendor\Package\Diagnostics\ApplicationKeyIsSet;
 
 public function boot(): void
 {
-    Doctor::diagnostic(SqliteDatabaseExists::class);
+    Doctor::diagnostic(ApplicationKeyIsSet::class);
 }
 ```
 
-Doctor determines where a diagnostic came from by inspecting the diagnostic class file and matching it to Composer's installed package paths. Application diagnostics are shown as `application`, Doctor's bundled diagnostics are shown as `doctor`, and diagnostics shipped by other Composer packages are shown as `package [vendor/package]`.
+Reports show each diagnostic's source next to its name. Doctor uses `application` for app diagnostics, `doctor` for its bundled diagnostics, and `package [vendor/package]` for diagnostics from installed Composer packages:
+
+```text
+[fail] Storage is writable (doctor): Laravel cannot write to every required storage directory.
+[pass] SQLite database exists (application): The SQLite database file exists.
+[warn] Horizon is running (package [laravel/horizon]): Horizon is not currently running.
+```
 
 ## Output Formats
 
@@ -202,8 +187,6 @@ php artisan doctor --format=json
 
 php artisan doctor --format=github
 ```
-
-The command exits with a failing status when a diagnostic fails. Use `--fail-on=warn` to also fail on warnings, or `--fail-on=never` when Doctor should only report issues. Notices are informational and do not affect the exit code.
 
 ## Contributing
 
