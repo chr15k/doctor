@@ -19,6 +19,11 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
         $cached = $this->cachedFiles();
 
         if ($cached === []) {
+            if (! app()->environment(['local', 'testing'])) {
+                return DiagnosticResult::warn('Laravel bootstrap files are not cached.')
+                    ->suggest('Run `php artisan optimize` or `php artisan config:cache` during deployment.');
+            }
+
             return DiagnosticResult::pass('Laravel bootstrap files are not cached.');
         }
 

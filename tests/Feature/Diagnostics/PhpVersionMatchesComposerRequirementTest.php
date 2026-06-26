@@ -1,0 +1,29 @@
+<?php
+
+use Laravel\Doctor\Diagnostics\PhpVersionMatchesComposerRequirement;
+
+function doctor_php_version_base_path(): string
+{
+    $basePath = sys_get_temp_dir().'/laravel-doctor-php-version-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($basePath, 0775, true);
+
+    return $basePath;
+}
+
+it('reports when PHP does not satisfy composer.json', function (): void {
+    $basePath = doctor_php_version_base_path();
+    file_put_contents($basePath.'/composer.json', json_encode([
+        'require' => [
+            'php' => '<1.0',
+        ],
+    ], JSON_THROW_ON_ERROR));
+
+    $this->app->setBasePath($basePath);
+
+    $result = (new PhpVersionMatchesComposerRequirement)->check();
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->details)->toContain(PHP_VERSION)
+        ->and($result->details)->toContain('<1.0');
+});

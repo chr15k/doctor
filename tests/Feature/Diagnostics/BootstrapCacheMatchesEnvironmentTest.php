@@ -26,6 +26,20 @@ it('passes when bootstrap files are not cached locally', function (): void {
         ->and($result->summary)->toBe('Laravel bootstrap files are not cached.');
 });
 
+it('warns when bootstrap files are not cached outside local environments', function (): void {
+    $basePath = doctor_cached_bootstrap_base_path();
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    $this->app->detectEnvironment(fn (): string => 'production');
+    config(['view.compiled' => $basePath.'/storage/framework/views']);
+
+    $result = (new BootstrapCacheMatchesEnvironment)->check();
+
+    expect($result->status->value)->toBe('warn')
+        ->and($result->summary)->toBe('Laravel bootstrap files are not cached.');
+});
+
 it('notices when bootstrap files are cached locally', function (): void {
     $basePath = doctor_cached_bootstrap_base_path();
 

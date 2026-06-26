@@ -22,6 +22,11 @@ class AsynchronousQueueIsConfigured extends Diagnostic
             return DiagnosticResult::skip('Laravel does not have a default queue connection configured.');
         }
 
+        if ($connection === 'sync' && ! app()->environment(['local', 'testing'])) {
+            return DiagnosticResult::warn('Queued jobs run synchronously in production.')
+                ->suggest('Set QUEUE_CONNECTION to a background queue driver such as database, redis, sqs, or beanstalkd.');
+        }
+
         if ($connection === 'sync') {
             return DiagnosticResult::pass('Queued jobs run synchronously.');
         }
@@ -31,6 +36,6 @@ class AsynchronousQueueIsConfigured extends Diagnostic
         }
 
         return DiagnosticResult::notice('Queued jobs are processed asynchronously.')
-            ->suggest('If jobs are not being processed be sure to start your queue worker.');
+            ->suggest('Make sure a queue worker is running with `php artisan queue:work` or Horizon if jobs are not being processed.');
     }
 }

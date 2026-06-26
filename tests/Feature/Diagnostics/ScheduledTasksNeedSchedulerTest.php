@@ -1,0 +1,26 @@
+<?php
+
+use Illuminate\Console\Scheduling\Schedule;
+use Laravel\Doctor\Diagnostics\ScheduledTasksNeedScheduler;
+
+it('passes when no scheduled tasks are registered', function (): void {
+    $this->app->instance(Schedule::class, new Schedule);
+
+    $result = (new ScheduledTasksNeedScheduler)->check();
+
+    expect($result->status->value)->toBe('pass')
+        ->and($result->summary)->toBe('Laravel does not have scheduled tasks.');
+});
+
+it('notices when scheduled tasks are registered', function (): void {
+    $schedule = new Schedule;
+    $schedule->call(fn (): bool => true)->everyMinute();
+
+    $this->app->instance(Schedule::class, $schedule);
+
+    $result = (new ScheduledTasksNeedScheduler)->check();
+
+    expect($result->status->value)->toBe('notice')
+        ->and($result->summary)->toBe('Laravel has scheduled tasks.')
+        ->and($result->remediation[0])->toContain('php artisan schedule:run');
+});

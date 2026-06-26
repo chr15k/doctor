@@ -1,0 +1,116 @@
+<?php
+
+namespace Laravel\Doctor\Diagnostics;
+
+use Illuminate\Support\Facades\File;
+use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\Results\DiagnosticResult;
+
+class EnvironmentFileIsIgnored extends Diagnostic
+{
+    public string $name = 'Environment file is ignored';
+
+    public string $group = 'security';
+
+    /**
+     * Run the diagnostic.
+     */
+    public function check(): DiagnosticResult
+    {
+        if (! File::exists($this->gitignorePath())) {
+            return DiagnosticResult::fail('The application does not have a .gitignore file.')
+                ->suggest('Add .env to .gitignore so secrets are not committed.');
+        }
+
+        if ($this->ignores('.env')) {
+            return DiagnosticResult::pass('Environment files are ignored by Git.');
+        }
+
+        return DiagnosticResult::fail('Environment files are not ignored by Git.')
+            ->suggest('Add .env or .env* to .gitignore.');
+    }
+
+    /**
+     * Determine whether .gitignore ignores the path.
+     */
+    private function ignores(string $path): bool
+    {
+        $ignored = false;
+
+        foreach ($this->patterns() as $pattern) {
+            if ($this->isNegated($pattern) && $this->matches(substr($pattern, 1), $path)) {
+                $ignored = false;
+
+                continue;
+            }
+
+            if (! $this->isNegated($pattern) && $this->matches($pattern, $path)) {
+                $ignored = true;
+            }
+        }
+
+        return $ignored;
+    }
+
+    /**
+     * Get normalized .gitignore patterns.
+     *
+     * @return list<string>
+     */
+    private function patterns(): array
+    {
+        $patterns = [];
+
+        foreach (File::lines($this->gitignorePath()) as $line) {
+            if (! is_string($line)) {
+                continue;
+            }
+
+            $pattern = $this->normalizePattern($line);
+
+            if ($pattern !== '') {
+                $patterns[] = $pattern;
+            }
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * Normalize a .gitignore pattern line.
+     */
+    private function normalizePattern(string $pattern): string
+    {
+        $pattern = trim($pattern);
+
+        if ($pattern === '' || str_starts_with($pattern, '#')) {
+            return '';
+        }
+
+        return ltrim($pattern, '/');
+    }
+
+    /**
+     * Determine whether a .gitignore pattern is negated.
+     */
+    private function isNegated(string $pattern): bool
+    {
+        return str_starts_with($pattern, '!');
+    }
+
+    /**
+     * Determine whether a pattern matches a path.
+     */
+    private function matches(string $pattern, string $path): bool
+    {
+        return fnmatch($pattern, $path) || fnmatch($pattern, basename($path));
+    }
+
+    /**
+     * Get the application .gitignore path.
+     */
+    private function gitignorePath(): string
+    {
+        return base_path('.gitignore');
+    }
+}

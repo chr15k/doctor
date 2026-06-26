@@ -87,12 +87,13 @@ php artisan doctor --interactive
 
 Doctor ships with a focused suite of diagnostics that cover common configuration, environment, dependency, database, queue, and storage problems. The default suite includes:
 
-- **Environment** — `.env` presence, `APP_KEY`, and PHP extensions required by `composer.json`.
+- **Environment** — `.env` presence, `APP_KEY`, PHP version, required and recommended PHP extensions, and timezone.
 - **Composer** — `vendor/autoload.php` exists, Composer can dump optimized autoload files, and `composer.lock` is present and fresh.
-- **Configuration** — configuration files can be loaded without exceptions, and bootstrap cache files are reported when their presence does not match the current environment.
-- **Database** — the default connection is reachable, the SQLite database file exists when needed, and pending migrations are reported.
-- **Queue** — asynchronous queue connections are noted in local and testing environments so developers know a worker must be running.
-- **Storage** — required directories are writable and the `storage:link` symlink exists when expected.
+- **Configuration** — configuration files can be loaded and cached, required environment variables exist, and bootstrap cache files are reported when their presence does not match the current environment.
+- **Database** — configured connections are reachable, the default connection timezone is compared with Laravel's timezone, the SQLite database file exists when needed, and pending migrations are reported.
+- **Cache, queue, scheduler, and session** — configured drivers are reachable, Redis connections are checked, `sync` queues are flagged outside local environments, and registered scheduled tasks are surfaced as a notice.
+- **Storage** — configured disks are reachable, required directories are writable, and the `storage:link` symlink exists when expected.
+- **Security** — debug mode matches the environment, `.env` is ignored, and Composer dependencies are audited.
 
 ## Creating Diagnostics
 

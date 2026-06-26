@@ -11,6 +11,16 @@ it('passes when queues run synchronously', function (): void {
         ->and($result->summary)->toBe('Queued jobs run synchronously.');
 });
 
+it('warns when queues run synchronously in production', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+    config(['queue.default' => 'sync']);
+
+    $result = (new AsynchronousQueueIsConfigured)->check();
+
+    expect($result->status->value)->toBe('warn')
+        ->and($result->summary)->toBe('Queued jobs run synchronously in production.');
+});
+
 it('notices when queued jobs are processed asynchronously locally', function (): void {
     config([
         'app.env' => 'local',

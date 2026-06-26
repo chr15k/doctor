@@ -2,16 +2,16 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Redis;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Throwable;
 
-class DatabaseConnectionIsAvailable extends Diagnostic
+class RedisConnectionsAreReachable extends Diagnostic
 {
-    public string $name = 'Database connects';
+    public string $name = 'Redis connections are reachable';
 
-    public string $group = 'database';
+    public string $group = 'cache';
 
     /**
      * Run the diagnostic.
@@ -21,55 +21,50 @@ class DatabaseConnectionIsAvailable extends Diagnostic
         $connections = $this->connections();
 
         if ($connections === []) {
-            return DiagnosticResult::skip('No database connections are configured.');
+            return DiagnosticResult::skip('Laravel does not have Redis connections configured.');
         }
 
-        if (! app()->bound('db')) {
-            return DiagnosticResult::skip('The database manager is not available.');
-        }
-
-        /** @var DatabaseManager $database */
-        $database = app('db');
         $failures = [];
 
         foreach ($connections as $connection) {
             try {
-                $database->connection($connection)->getPdo();
+                Redis::connection($connection)->ping();
             } catch (Throwable $e) {
                 $failures[$connection] = $e->getMessage();
             }
         }
 
         if ($failures !== []) {
-            return DiagnosticResult::fail('Laravel cannot connect to every configured database.')
+            return DiagnosticResult::fail('Laravel cannot reach every Redis connection.')
                 ->withDetails($this->formatFailures($failures))
-                ->suggest('Check DB_CONNECTION and the database credentials in your environment file.');
+                ->suggest('Check Redis host, port, credentials, and client configuration.');
         }
 
-        return DiagnosticResult::pass('Laravel can connect to every configured database.');
+        return DiagnosticResult::pass('Laravel can reach every Redis connection.');
     }
 
     /**
-     * Get configured database connection names.
+     * Get configured Redis connection names.
      *
      * @return list<string>
      */
     private function connections(): array
     {
-        $connections = config('database.connections');
+        $redis = config('database.redis');
 
-        if (! is_array($connections)) {
+        if (! is_array($redis)) {
             return [];
         }
 
         return array_values(array_filter(
-            array_keys($connections),
-            static fn (mixed $connection): bool => is_string($connection) && $connection !== '',
+            array_keys($redis),
+            static fn (mixed $connection): bool => is_string($connection)
+                && ! in_array($connection, ['client', 'options', 'clusters'], true),
         ));
     }
 
     /**
-     * Format connection failures.
+     * Format Redis failures.
      *
      * @param  array<string, string>  $failures
      */
