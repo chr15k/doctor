@@ -8,6 +8,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use Throwable;
 
 /**
@@ -20,6 +21,35 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
     public string $group = 'database';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'application-timezone-invalid' => Outcome::skip('Laravel does not have a valid application timezone configured.'),
+            'connection-missing' => Outcome::skip('Laravel does not have a default database connection configured.'),
+            'manager-missing' => Outcome::skip('The database manager is not available.'),
+            'connection-inspection-failed' => Outcome::warn(
+                summary: 'Laravel could not inspect the database timezone.',
+                remediation: 'Confirm the default database connection is reachable, then run Doctor again.',
+            ),
+            'sqlite' => Outcome::skip('SQLite does not expose a database timezone.'),
+            'unsupported-driver' => Outcome::skip('The [{driver}] database driver does not expose a comparable timezone.'),
+            'timezone-inspection-failed' => Outcome::warn(
+                summary: 'Laravel could not inspect the database timezone.',
+                remediation: 'Confirm the database user may read the session timezone, then run Doctor again.',
+            ),
+            'matches' => Outcome::pass('The default database connection uses the application timezone.'),
+            'mismatch' => Outcome::warn(
+                summary: 'The database timezone does not match the application timezone.',
+                remediation: 'Set the database session timezone to match app.timezone, or intentionally keep both at UTC.',
+            ),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -27,51 +57,48 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
         $applicationTimezone = $this->applicationTimezone();
 
         if (! $applicationTimezone instanceof DateTimeZone) {
-            return DiagnosticResult::skip('Laravel does not have a valid application timezone configured.');
+            return $this->result('application-timezone-invalid');
         }
 
         $connection = $this->configuredConnection();
 
         if ($connection === null) {
-            return DiagnosticResult::skip('Laravel does not have a default database connection configured.');
+            return $this->result('connection-missing');
         }
 
         if (! app()->bound('db')) {
-            return DiagnosticResult::skip('The database manager is not available.');
+            return $this->result('manager-missing');
         }
 
         try {
             $database = $this->database()->connection($connection);
             $driver = $database->getDriverName();
         } catch (Throwable $e) {
-            return DiagnosticResult::warn('Laravel could not inspect the database timezone.')
-                ->withDetails($e->getMessage())
-                ->suggest('Confirm the default database connection is reachable, then run Doctor again.');
+            return $this->result('connection-inspection-failed')
+                ->withDetails($e->getMessage());
         }
 
         if ($driver === 'sqlite') {
-            return DiagnosticResult::skip('SQLite does not expose a database timezone.');
+            return $this->result('sqlite');
         }
 
         if (! $this->supportsDriver($driver)) {
-            return DiagnosticResult::skip(sprintf('The [%s] database driver does not expose a comparable timezone.', $driver));
+            return $this->result('unsupported-driver', ['driver' => $driver]);
         }
 
         try {
             $databaseTimezone = $this->databaseTimezone($database, $driver);
         } catch (Throwable $e) {
-            return DiagnosticResult::warn('Laravel could not inspect the database timezone.')
-                ->withDetails($e->getMessage())
-                ->suggest('Confirm the database user may read the session timezone, then run Doctor again.');
+            return $this->result('timezone-inspection-failed')
+                ->withDetails($e->getMessage());
         }
 
         if ($this->timezonesMatch($applicationTimezone, $databaseTimezone)) {
-            return DiagnosticResult::pass('The default database connection uses the application timezone.');
+            return $this->result('matches');
         }
 
-        return DiagnosticResult::warn('The database timezone does not match the application timezone.')
-            ->withDetails($this->formatMismatch($applicationTimezone, $databaseTimezone, $connection, $driver))
-            ->suggest('Set the database session timezone to match app.timezone, or intentionally keep both at UTC.');
+        return $this->result('mismatch')
+            ->withDetails($this->formatMismatch($applicationTimezone, $databaseTimezone, $connection, $driver));
     }
 
     /**

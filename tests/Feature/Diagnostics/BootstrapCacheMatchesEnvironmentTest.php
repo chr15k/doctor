@@ -58,7 +58,7 @@ it('notices when bootstrap files are cached locally', function (): void {
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('Config, events, routes, and views are cached.')
         ->and($result->details)->toBeNull()
-        ->and($result->remediation[0])->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.');
+        ->and($result->remediation)->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.');
 });
 
 it('passes when bootstrap files are cached outside local environments', function (): void {

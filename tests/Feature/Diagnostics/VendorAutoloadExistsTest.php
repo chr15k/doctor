@@ -20,5 +20,5 @@ it('reports a missing Composer autoload file', function (): void {
     $result = (new VendorAutoloadExists)->check();
 
     expect($result->status->value)->toBe('fail')
-        ->and($result->remediation[0])->toBe('Install Composer dependencies.');
+        ->and($result->remediation)->toBe('Install Composer dependencies.');
 });

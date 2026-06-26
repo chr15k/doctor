@@ -397,8 +397,8 @@ class DoctorCommand extends Command
             $this->line('    '.$outcome->result->details);
         }
 
-        foreach ($outcome->result->remediation as $remediation) {
-            $this->line('    '.$remediation);
+        if ($outcome->result->remediation !== null) {
+            $this->line('    '.$outcome->result->remediation);
         }
 
         foreach ($outcome->result->links as $label => $url) {
@@ -459,9 +459,9 @@ class DoctorCommand extends Command
             $content[] = $outcome->result->details;
         }
 
-        if ($outcome->result->remediation !== []) {
-            $content[] = Element::heading(count($outcome->result->remediation) === 1 ? 'Suggested fix' : 'Suggested fixes');
-            $content[] = Element::bulletedList($outcome->result->remediation);
+        if ($outcome->result->remediation !== null) {
+            $content[] = Element::heading('Suggested fix');
+            $content[] = $outcome->result->remediation;
         }
 
         if ($outcome->result->links !== []) {
@@ -511,13 +511,11 @@ class DoctorCommand extends Command
                     'class' => $outcome->diagnostic::class,
                     'group' => $outcome->diagnostic->group,
                     'name' => $outcome->diagnostic->name,
+                    'code' => $outcome->result->code,
                     'status' => $outcome->result->status->value,
                     'summary' => $outcome->result->summary,
                     'details' => $outcome->result->details,
-                    'remediation' => array_map(
-                        static fn (string $message) => ['message' => $message],
-                        $outcome->result->remediation,
-                    ),
+                    'remediation' => $outcome->result->remediation,
                     'links' => (object) $outcome->result->links,
                 ],
                 $diagnostics,
@@ -559,7 +557,9 @@ class DoctorCommand extends Command
             $parts[] = $outcome->result->details;
         }
 
-        $parts = [...$parts, ...$outcome->result->remediation];
+        if ($outcome->result->remediation !== null) {
+            $parts[] = $outcome->result->remediation;
+        }
 
         foreach ($outcome->result->links as $label => $url) {
             $parts[] = sprintf('%s: %s', $label, $url);

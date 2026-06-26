@@ -22,5 +22,5 @@ it('notices when scheduled tasks are registered', function (): void {
 
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('Laravel has scheduled tasks.')
-        ->and($result->remediation[0])->toContain('php artisan schedule:run');
+        ->and($result->remediation)->toContain('php artisan schedule:run');
 });

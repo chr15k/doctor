@@ -5,6 +5,8 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Database\DatabaseManager;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 use Throwable;
 
 class DatabaseConnectionIsAvailable extends Diagnostic
@@ -14,6 +16,24 @@ class DatabaseConnectionIsAvailable extends Diagnostic
     public string $group = 'database';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'not-configured' => Outcome::skip('No database connections are configured.'),
+            'manager-missing' => Outcome::skip('The database manager is not available.'),
+            'unreachable' => Outcome::fail(
+                summary: 'Laravel cannot connect to every configured database.',
+                remediation: 'Check DB_CONNECTION and the database credentials in your environment file.',
+            ),
+            'reachable' => Outcome::pass('Laravel can connect to every configured database.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -21,11 +41,11 @@ class DatabaseConnectionIsAvailable extends Diagnostic
         $connections = $this->connections();
 
         if ($connections === []) {
-            return DiagnosticResult::skip('No database connections are configured.');
+            return $this->result('not-configured');
         }
 
         if (! app()->bound('db')) {
-            return DiagnosticResult::skip('The database manager is not available.');
+            return $this->result('manager-missing');
         }
 
         /** @var DatabaseManager $database */
@@ -41,12 +61,11 @@ class DatabaseConnectionIsAvailable extends Diagnostic
         }
 
         if ($failures !== []) {
-            return DiagnosticResult::fail('Laravel cannot connect to every configured database.')
-                ->withDetails($this->formatFailures($failures))
-                ->suggest('Check DB_CONNECTION and the database credentials in your environment file.');
+            return $this->result('unreachable')
+                ->withDetails(Details::failures($failures));
         }
 
-        return DiagnosticResult::pass('Laravel can connect to every configured database.');
+        return $this->result('reachable');
     }
 
     /**
@@ -65,20 +84,6 @@ class DatabaseConnectionIsAvailable extends Diagnostic
         return array_values(array_filter(
             array_keys($connections),
             static fn (mixed $connection): bool => is_string($connection) && $connection !== '',
-        ));
-    }
-
-    /**
-     * Format connection failures.
-     *
-     * @param  array<string, string>  $failures
-     */
-    private function formatFailures(array $failures): string
-    {
-        return implode(PHP_EOL, array_map(
-            static fn (string $connection, string $message): string => sprintf('- %s: %s', $connection, $message),
-            array_keys($failures),
-            $failures,
         ));
     }
 }

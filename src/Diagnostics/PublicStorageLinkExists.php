@@ -6,7 +6,9 @@ use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Outcome;
 
 class PublicStorageLinkExists extends Diagnostic implements Fixable
 {
@@ -15,25 +17,55 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
     public string $group = 'storage';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'not-default-local-path' => Outcome::skip('The public disk does not use Laravel\'s default local public storage path.'),
+            'unused' => Outcome::skip('The public storage directory does not contain public files.'),
+            'linked' => Outcome::pass('The public storage link exists.'),
+            'missing' => Outcome::fail(
+                summary: 'The public storage link does not exist.',
+                remediation: 'Create the public storage link with `php artisan storage:link`.',
+                confirmation: 'Would you like Doctor to create the public storage link using `artisan storage:link`?',
+            ),
+        ];
+    }
+
+    /**
+     * Get the diagnostic's named fix outcome definitions.
+     *
+     * @return array<string, FixOutcome>
+     */
+    protected function fixOutcomes(): array
+    {
+        return [
+            'creation-failed' => FixOutcome::fail('The public storage link could not be created.'),
+            'created' => FixOutcome::pass('The public storage link was created.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
     {
         if (! $this->expectsPublicStorageLink()) {
-            return DiagnosticResult::skip('The public disk does not use Laravel\'s default local public storage path.');
+            return $this->result('not-default-local-path');
         }
 
         if ($this->publicDiskIsUnused()) {
-            return DiagnosticResult::skip('The public storage directory does not contain public files.');
+            return $this->result('unused');
         }
 
         if (file_exists($this->publicStoragePath())) {
-            return DiagnosticResult::pass('The public storage link exists.');
+            return $this->result('linked');
         }
 
-        return DiagnosticResult::fail('The public storage link does not exist.')
-            ->confirmUsing('Would you like Doctor to create the public storage link using `artisan storage:link`?')
-            ->suggest('Create the public storage link with `php artisan storage:link`.');
+        return $this->result('missing');
     }
 
     /**
@@ -44,11 +76,11 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
         $process = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'storage:link']);
 
         if (! $process->successful()) {
-            return FixResult::fail('The public storage link could not be created.')
+            return $this->fixResult('creation-failed')
                 ->withDetails(trim($process->errorOutput() !== '' ? $process->errorOutput() : $process->output()));
         }
 
-        return FixResult::pass('The public storage link was created.');
+        return $this->fixResult('created');
     }
 
     private function expectsPublicStorageLink(): bool

@@ -50,7 +50,7 @@ it('runs registered diagnostics', function (): void {
     expect($report->diagnostics())->toHaveCount(2)
         ->and($report->hasWarnings())->toBeTrue()
         ->and($report->hasFailures())->toBeFalse()
-        ->and($report->diagnostics()[1]->result->remediation[0])->toBe('Re-run this diagnostic after addressing the warning.');
+        ->and($report->diagnostics()[1]->result->remediation)->toBe('Re-run this diagnostic after addressing the warning.');
 });
 
 it('does not treat notices as warnings', function (): void {
@@ -102,7 +102,7 @@ it('runs a fix supplied by the diagnostic', function (): void {
 
     expect($outcome->diagnostic)->toBeInstanceOf(Fixable::class)
         ->and($outcome->result->confirmation)->toBe('Fix the testing diagnostic?')
-        ->and($outcome->result->remediation[0])->toBe('Apply the testing diagnostic fix.');
+        ->and($outcome->result->remediation)->toBe('Apply the testing diagnostic fix.');
 
     $fix = $doctor->fix($outcome);
 

@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\EnvironmentVariables;
 
 class ConfigurationEnvironmentVariablesExist extends Diagnostic
@@ -14,6 +15,22 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
     public string $group = 'configuration';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'defined' => Outcome::pass('Every required configuration environment variable is defined.'),
+            'missing' => Outcome::fail(
+                summary: 'Some configuration environment variables are missing.',
+                remediation: 'Define the missing variables in the application environment or add safe defaults to the config files.',
+            ),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -21,12 +38,11 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
         $missing = $this->missingVariables();
 
         if ($missing === []) {
-            return DiagnosticResult::pass('Every required configuration environment variable is defined.');
+            return $this->result('defined');
         }
 
-        return DiagnosticResult::fail('Some configuration environment variables are missing.')
-            ->withDetails($this->formatMissingVariables($missing))
-            ->suggest('Define the missing variables in the application environment or add safe defaults to the config files.');
+        return $this->result('missing')
+            ->withDetails($this->formatMissingVariables($missing));
     }
 
     /**

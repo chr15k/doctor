@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use RuntimeException;
 use Throwable;
 
@@ -18,6 +19,23 @@ class SessionDriverIsReachable extends Diagnostic
     public string $group = 'session';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'not-configured' => Outcome::skip('Laravel does not have a session driver configured.'),
+            'unreachable' => Outcome::fail(
+                summary: 'Laravel cannot reach the configured session driver.',
+                remediation: 'Check SESSION_DRIVER and the backing session store configuration.',
+            ),
+            'reachable' => Outcome::pass('Laravel can reach the configured session driver.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -25,18 +43,17 @@ class SessionDriverIsReachable extends Diagnostic
         $driver = config('session.driver');
 
         if (! is_string($driver) || $driver === '') {
-            return DiagnosticResult::skip('Laravel does not have a session driver configured.');
+            return $this->result('not-configured');
         }
 
         try {
             $this->probe($driver);
         } catch (Throwable $e) {
-            return DiagnosticResult::fail('Laravel cannot reach the configured session driver.')
-                ->withDetails($e->getMessage())
-                ->suggest('Check SESSION_DRIVER and the backing session store configuration.');
+            return $this->result('unreachable')
+                ->withDetails($e->getMessage());
         }
 
-        return DiagnosticResult::pass('Laravel can reach the configured session driver.');
+        return $this->result('reachable');
     }
 
     /**

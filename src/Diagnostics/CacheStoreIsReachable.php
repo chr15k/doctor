@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use Throwable;
 
 class CacheStoreIsReachable extends Diagnostic
@@ -14,6 +15,23 @@ class CacheStoreIsReachable extends Diagnostic
     public string $group = 'cache';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'not-configured' => Outcome::skip('Laravel does not have a default cache store configured.'),
+            'unreachable' => Outcome::fail(
+                summary: 'Laravel cannot reach the default cache store.',
+                remediation: 'Check CACHE_STORE and the backing cache service configuration.',
+            ),
+            'reachable' => Outcome::pass('Laravel can reach the default cache store.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -21,18 +39,17 @@ class CacheStoreIsReachable extends Diagnostic
         $store = config('cache.default');
 
         if (! is_string($store) || $store === '') {
-            return DiagnosticResult::skip('Laravel does not have a default cache store configured.');
+            return $this->result('not-configured');
         }
 
         try {
             $this->probe($store);
         } catch (Throwable $e) {
-            return DiagnosticResult::fail('Laravel cannot reach the default cache store.')
-                ->withDetails($e->getMessage())
-                ->suggest('Check CACHE_STORE and the backing cache service configuration.');
+            return $this->result('unreachable')
+                ->withDetails($e->getMessage());
         }
 
-        return DiagnosticResult::pass('Laravel can reach the default cache store.');
+        return $this->result('reachable');
     }
 
     /**

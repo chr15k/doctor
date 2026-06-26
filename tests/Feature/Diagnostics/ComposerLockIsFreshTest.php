@@ -29,5 +29,5 @@ it('checks Composer lock freshness through Composer validate', function (): void
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toBe('The lock file is not up to date.')
-        ->and($result->remediation[0])->toBe('Refresh the lock file metadata without changing installed package versions.');
+        ->and($result->remediation)->toBe('Refresh the lock file metadata without changing installed package versions.');
 });

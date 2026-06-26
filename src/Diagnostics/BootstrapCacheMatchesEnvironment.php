@@ -4,12 +4,34 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 
 class BootstrapCacheMatchesEnvironment extends Diagnostic
 {
     public string $name = 'Bootstrap cache matches environment';
 
     public string $group = 'configuration';
+
+    /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'uncached-production' => Outcome::warn(
+                summary: 'Laravel bootstrap files are not cached.',
+                remediation: 'Run `php artisan optimize` or `php artisan config:cache` during deployment.',
+            ),
+            'uncached-local' => Outcome::pass('Laravel bootstrap files are not cached.'),
+            'cached-production' => Outcome::pass('Laravel bootstrap files are cached.'),
+            'cached-local' => Outcome::notice(
+                summary: '{files} {verb} cached.',
+                remediation: 'If recent changes are not appearing, run `php artisan optimize:clear`.',
+            ),
+        ];
+    }
 
     /**
      * Run the diagnostic.
@@ -20,19 +42,20 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
 
         if ($cached === []) {
             if (! app()->environment(['local', 'testing'])) {
-                return DiagnosticResult::warn('Laravel bootstrap files are not cached.')
-                    ->suggest('Run `php artisan optimize` or `php artisan config:cache` during deployment.');
+                return $this->result('uncached-production');
             }
 
-            return DiagnosticResult::pass('Laravel bootstrap files are not cached.');
+            return $this->result('uncached-local');
         }
 
         if (! app()->environment(['local', 'testing'])) {
-            return DiagnosticResult::pass('Laravel bootstrap files are cached.');
+            return $this->result('cached-production');
         }
 
-        return DiagnosticResult::notice(sprintf('%s %s cached.', ucfirst($this->formatCachedFiles($cached)), count($cached) === 1 ? 'is' : 'are'))
-            ->suggest('If recent changes are not appearing, run `php artisan optimize:clear`.');
+        return $this->result('cached-local', [
+            'files' => ucfirst($this->formatCachedFiles($cached)),
+            'verb' => count($cached) === 1 ? 'is' : 'are',
+        ]);
     }
 
     /**

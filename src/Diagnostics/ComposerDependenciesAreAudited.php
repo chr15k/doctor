@@ -3,8 +3,11 @@
 namespace Laravel\Doctor\Diagnostics;
 
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 
 class ComposerDependenciesAreAudited extends Diagnostic
 {
@@ -13,12 +16,33 @@ class ComposerDependenciesAreAudited extends Diagnostic
     public string $group = 'security';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'lock-missing' => Outcome::skip('The application does not have a composer.lock file.'),
+            'vulnerable' => Outcome::fail(
+                summary: 'Composer audit found vulnerable dependencies.',
+                remediation: 'Run `composer audit` and update or replace vulnerable dependencies.',
+            ),
+            'audit-failed' => Outcome::fail(
+                summary: 'Composer audit could not be completed.',
+                remediation: 'Run `composer audit` locally and resolve the reported issue.',
+            ),
+            'clean' => Outcome::pass('Composer audit did not find vulnerable dependencies.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
     {
         if (! is_file(base_path('composer.lock'))) {
-            return DiagnosticResult::skip('The application does not have a composer.lock file.');
+            return $this->result('lock-missing');
         }
 
         $process = Process::path(base_path())->timeout(10)->run([
@@ -31,18 +55,25 @@ class ComposerDependenciesAreAudited extends Diagnostic
         $advisories = $this->advisoryCount($process->output());
 
         if ($advisories > 0) {
-            return DiagnosticResult::fail('Composer audit found vulnerable dependencies.')
-                ->withDetails(sprintf('%d security %s reported.', $advisories, $advisories === 1 ? 'advisory was' : 'advisories were'))
-                ->suggest('Run `composer audit` and update or replace vulnerable dependencies.');
+            return $this->result('vulnerable')
+                ->withDetails(sprintf(
+                    '%d security %s %s reported.',
+                    $advisories,
+                    Str::plural('advisory', $advisories),
+                    $advisories === 1 ? 'was' : 'were',
+                ));
         }
 
         if (! $process->successful()) {
-            return DiagnosticResult::fail('Composer audit could not be completed.')
-                ->withDetails($this->processOutput($process->output(), $process->errorOutput()))
-                ->suggest('Run `composer audit` locally and resolve the reported issue.');
+            return $this->result('audit-failed')
+                ->withDetails(Details::processOutput(
+                    $process->output(),
+                    $process->errorOutput(),
+                    'Composer exited without audit details.',
+                ));
         }
 
-        return DiagnosticResult::pass('Composer audit did not find vulnerable dependencies.');
+        return $this->result('clean');
     }
 
     /**
@@ -71,15 +102,5 @@ class ComposerDependenciesAreAudited extends Diagnostic
         }
 
         return $count;
-    }
-
-    /**
-     * Get the most useful process output.
-     */
-    private function processOutput(string $output, string $errorOutput): string
-    {
-        $output = trim($errorOutput !== '' ? $errorOutput : $output);
-
-        return $output === '' ? 'Composer exited without audit details.' : $output;
     }
 }

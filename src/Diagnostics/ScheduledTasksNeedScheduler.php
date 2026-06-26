@@ -6,6 +6,7 @@ use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 
 class ScheduledTasksNeedScheduler extends Diagnostic
 {
@@ -14,20 +15,36 @@ class ScheduledTasksNeedScheduler extends Diagnostic
     public string $group = 'scheduler';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'scheduler-missing' => Outcome::skip('The scheduler service is not available.'),
+            'no-tasks' => Outcome::pass('Laravel does not have scheduled tasks.'),
+            'tasks-registered' => Outcome::notice(
+                summary: 'Laravel has scheduled tasks.',
+                remediation: 'Make sure the scheduler is running with `php artisan schedule:run` every minute or `php artisan schedule:work` during development.',
+            ),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
     {
         if (! $this->schedulerIsAvailable()) {
-            return DiagnosticResult::skip('The scheduler service is not available.');
+            return $this->result('scheduler-missing');
         }
 
         if (! $this->hasScheduledTasks()) {
-            return DiagnosticResult::pass('Laravel does not have scheduled tasks.');
+            return $this->result('no-tasks');
         }
 
-        return DiagnosticResult::notice('Laravel has scheduled tasks.')
-            ->suggest('Make sure the scheduler is running with `php artisan schedule:run` every minute or `php artisan schedule:work` during development.');
+        return $this->result('tasks-registered');
     }
 
     /**

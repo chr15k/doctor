@@ -6,6 +6,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use LogicException;
 use RuntimeException;
 use Throwable;
@@ -17,6 +18,22 @@ class ConfigurationCanBeCached extends Diagnostic
     public string $group = 'configuration';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'cannot-cache' => Outcome::fail(
+                summary: 'Laravel configuration cannot be cached.',
+                remediation: 'Remove non-serializable values from configuration files before running `php artisan config:cache`.',
+            ),
+            'can-cache' => Outcome::pass('Laravel configuration can be cached.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -24,12 +41,11 @@ class ConfigurationCanBeCached extends Diagnostic
         try {
             $this->cacheConfiguration();
         } catch (Throwable $e) {
-            return DiagnosticResult::fail('Laravel configuration cannot be cached.')
-                ->withDetails($e->getMessage())
-                ->suggest('Remove non-serializable values from configuration files before running `php artisan config:cache`.');
+            return $this->result('cannot-cache')
+                ->withDetails($e->getMessage());
         }
 
-        return DiagnosticResult::pass('Laravel configuration can be cached.');
+        return $this->result('can-cache');
     }
 
     /**

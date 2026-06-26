@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use RuntimeException;
 use Throwable;
 
@@ -13,6 +14,22 @@ class FilesystemDisksAreReachable extends Diagnostic
     public string $name = 'Filesystem disks are reachable';
 
     public string $group = 'storage';
+
+    /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'unreachable' => Outcome::fail(
+                summary: 'Laravel cannot reach every configured filesystem disk.',
+                remediation: 'Check filesystem disk roots, credentials, and network access.',
+            ),
+            'reachable' => Outcome::pass('Laravel can reach every configured filesystem disk.'),
+        ];
+    }
 
     /**
      * Run the diagnostic.
@@ -30,12 +47,11 @@ class FilesystemDisksAreReachable extends Diagnostic
         }
 
         if ($failures !== []) {
-            return DiagnosticResult::fail('Laravel cannot reach every configured filesystem disk.')
-                ->withDetails($this->formatFailures($failures))
-                ->suggest('Check filesystem disk roots, credentials, and network access.');
+            return $this->result('unreachable')
+                ->withDetails($this->formatFailures($failures));
         }
 
-        return DiagnosticResult::pass('Laravel can reach every configured filesystem disk.');
+        return $this->result('reachable');
     }
 
     /**

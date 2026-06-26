@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use RuntimeException;
 use Throwable;
 
@@ -18,6 +19,23 @@ class QueueConnectionIsReachable extends Diagnostic
     public string $group = 'queue';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'not-configured' => Outcome::skip('Laravel does not have a default queue connection configured.'),
+            'unreachable' => Outcome::fail(
+                summary: 'Laravel cannot reach the default queue connection.',
+                remediation: 'Check QUEUE_CONNECTION and the backing queue service configuration.',
+            ),
+            'reachable' => Outcome::pass('Laravel can reach the default queue connection.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -25,18 +43,17 @@ class QueueConnectionIsReachable extends Diagnostic
         $connection = config('queue.default');
 
         if (! is_string($connection) || $connection === '') {
-            return DiagnosticResult::skip('Laravel does not have a default queue connection configured.');
+            return $this->result('not-configured');
         }
 
         try {
             $this->probe($connection, $this->configuration($connection));
         } catch (Throwable $e) {
-            return DiagnosticResult::fail('Laravel cannot reach the default queue connection.')
-                ->withDetails($e->getMessage())
-                ->suggest('Check QUEUE_CONNECTION and the backing queue service configuration.');
+            return $this->result('unreachable')
+                ->withDetails($e->getMessage());
         }
 
-        return DiagnosticResult::pass('Laravel can reach the default queue connection.');
+        return $this->result('reachable');
     }
 
     /**

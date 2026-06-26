@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\ComposerJson;
 
 class RecommendedPhpExtensionsAreInstalled extends Diagnostic
@@ -13,6 +14,23 @@ class RecommendedPhpExtensionsAreInstalled extends Diagnostic
     public string $group = 'environment';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'none-declared' => Outcome::pass('No Composer-suggested PHP extensions are declared.'),
+            'installed' => Outcome::pass('All Composer-suggested PHP extensions are installed.'),
+            'missing' => Outcome::warn(
+                summary: 'Some Composer-suggested PHP extensions are missing.',
+                remediation: 'Install the missing PHP extensions when the related optional features are used.',
+            ),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -20,18 +38,17 @@ class RecommendedPhpExtensionsAreInstalled extends Diagnostic
         $extensions = $this->composer()->suggestedExtensions();
 
         if ($extensions === []) {
-            return DiagnosticResult::pass('No Composer-suggested PHP extensions are declared.');
+            return $this->result('none-declared');
         }
 
         $missing = $this->missingExtensions($extensions);
 
         if ($missing === []) {
-            return DiagnosticResult::pass('All Composer-suggested PHP extensions are installed.');
+            return $this->result('installed');
         }
 
-        return DiagnosticResult::warn('Some Composer-suggested PHP extensions are missing.')
-            ->withDetails($this->formatExtensions($missing))
-            ->suggest('Install the missing PHP extensions when the related optional features are used.');
+        return $this->result('missing')
+            ->withDetails($this->formatExtensions($missing));
     }
 
     /**

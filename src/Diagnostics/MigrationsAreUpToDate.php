@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Database\Migrations\Migrator;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use Throwable;
 
 class MigrationsAreUpToDate extends Diagnostic
@@ -14,12 +15,35 @@ class MigrationsAreUpToDate extends Diagnostic
     public string $group = 'database';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'service-missing' => Outcome::skip('The migration service is not available.'),
+            'no-files' => Outcome::pass('The application does not have migration files.'),
+            'repository-missing' => Outcome::fail(
+                summary: 'The migrations table does not exist.',
+                remediation: 'Create the migrations table and run pending migrations.',
+            ),
+            'inspection-failed' => Outcome::fail('Laravel could not inspect database migrations.'),
+            'current' => Outcome::pass('Database migrations are current.'),
+            'pending' => Outcome::fail(
+                summary: 'Database migrations are pending.',
+                remediation: 'Run pending database migrations.',
+            ),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
     {
         if (! app()->bound('migrator')) {
-            return DiagnosticResult::skip('The migration service is not available.');
+            return $this->result('service-missing');
         }
 
         /** @var Migrator $migrator */
@@ -32,12 +56,11 @@ class MigrationsAreUpToDate extends Diagnostic
             ])));
 
             if ($files === []) {
-                return DiagnosticResult::pass('The application does not have migration files.');
+                return $this->result('no-files');
             }
 
             if (! $migrator->repositoryExists()) {
-                return DiagnosticResult::fail('The migrations table does not exist.')
-                    ->suggest('Create the migrations table and run pending migrations.');
+                return $this->result('repository-missing');
             }
 
             $pending = array_values(array_diff(
@@ -45,19 +68,18 @@ class MigrationsAreUpToDate extends Diagnostic
                 $migrator->getRepository()->getRan(),
             ));
         } catch (Throwable $e) {
-            return DiagnosticResult::fail('Laravel could not inspect database migrations.')
+            return $this->result('inspection-failed')
                 ->withDetails($e->getMessage());
         }
 
         if ($pending === []) {
-            return DiagnosticResult::pass('Database migrations are current.');
+            return $this->result('current');
         }
 
-        return DiagnosticResult::fail('Database migrations are pending.')
+        return $this->result('pending')
             ->withDetails(implode(PHP_EOL, array_map(
                 static fn (string $migration): string => '- '.$migration,
                 $pending,
-            )))
-            ->suggest('Run pending database migrations.');
+            )));
     }
 }

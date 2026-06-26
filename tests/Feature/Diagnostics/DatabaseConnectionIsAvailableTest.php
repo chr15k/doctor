@@ -21,5 +21,6 @@ it('checks the configured database connection', function (): void {
 
     $result = (new DatabaseConnectionIsAvailable)->check();
 
-    expect($result->status->value)->toBe('pass');
+    expect($result->status->value)->toBe('pass')
+        ->and($result->code)->toBe('database-connection-is-available.reachable');
 });

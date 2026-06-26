@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Redis;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 use Throwable;
 
 class RedisConnectionsAreReachable extends Diagnostic
@@ -14,6 +15,23 @@ class RedisConnectionsAreReachable extends Diagnostic
     public string $group = 'cache';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'not-configured' => Outcome::skip('Laravel does not have Redis connections configured.'),
+            'unreachable' => Outcome::fail(
+                summary: 'Laravel cannot reach every Redis connection.',
+                remediation: 'Check Redis host, port, credentials, and client configuration.',
+            ),
+            'reachable' => Outcome::pass('Laravel can reach every Redis connection.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -21,7 +39,7 @@ class RedisConnectionsAreReachable extends Diagnostic
         $connections = $this->connections();
 
         if ($connections === []) {
-            return DiagnosticResult::skip('Laravel does not have Redis connections configured.');
+            return $this->result('not-configured');
         }
 
         $failures = [];
@@ -35,12 +53,11 @@ class RedisConnectionsAreReachable extends Diagnostic
         }
 
         if ($failures !== []) {
-            return DiagnosticResult::fail('Laravel cannot reach every Redis connection.')
-                ->withDetails($this->formatFailures($failures))
-                ->suggest('Check Redis host, port, credentials, and client configuration.');
+            return $this->result('unreachable')
+                ->withDetails($this->formatFailures($failures));
         }
 
-        return DiagnosticResult::pass('Laravel can reach every Redis connection.');
+        return $this->result('reachable');
     }
 
     /**

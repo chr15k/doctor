@@ -10,11 +10,9 @@ class DiagnosticResult
     public ?string $details = null;
 
     /**
-     * The remediation messages for the result.
-     *
-     * @var list<string>
+     * The remediation message for the result.
      */
-    public array $remediation = [];
+    public ?string $remediation = null;
 
     /**
      * The documentation links for the result.
@@ -38,6 +36,7 @@ class DiagnosticResult
     public function __construct(
         public Status $status,
         public string $summary,
+        public ?string $code = null,
     ) {
         //
     }
@@ -45,49 +44,49 @@ class DiagnosticResult
     /**
      * Create a passing diagnostic result.
      */
-    public static function pass(string $summary = 'Passed'): static
+    public static function pass(string $summary = 'Passed', ?string $code = null): static
     {
-        return new static(Status::Pass, $summary);
+        return new static(Status::Pass, $summary, $code);
     }
 
     /**
      * Create a warning diagnostic result.
      */
-    public static function warn(string $summary): static
+    public static function warn(string $summary, ?string $code = null): static
     {
-        return new static(Status::Warn, $summary);
+        return new static(Status::Warn, $summary, $code);
     }
 
     /**
      * Create a notice diagnostic result.
      */
-    public static function notice(string $summary): static
+    public static function notice(string $summary, ?string $code = null): static
     {
-        return new static(Status::Notice, $summary);
+        return new static(Status::Notice, $summary, $code);
     }
 
     /**
      * Create a failing diagnostic result.
      */
-    public static function fail(string $summary): static
+    public static function fail(string $summary, ?string $code = null): static
     {
-        return new static(Status::Fail, $summary);
+        return new static(Status::Fail, $summary, $code);
     }
 
     /**
      * Create a skipped diagnostic result.
      */
-    public static function skip(string $summary): static
+    public static function skip(string $summary, ?string $code = null): static
     {
-        return new static(Status::Skip, $summary);
+        return new static(Status::Skip, $summary, $code);
     }
 
     /**
      * Create an error diagnostic result.
      */
-    public static function error(string $summary): static
+    public static function error(string $summary, ?string $code = null): static
     {
-        return new static(Status::Error, $summary);
+        return new static(Status::Error, $summary, $code);
     }
 
     /**
@@ -105,7 +104,7 @@ class DiagnosticResult
      */
     public function suggest(string $message): static
     {
-        $this->remediation[] = $message;
+        $this->remediation = $message;
 
         return $this;
     }

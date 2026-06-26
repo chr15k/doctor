@@ -32,5 +32,6 @@ it('reports Composer audit advisories', function (): void {
     $result = (new ComposerDependenciesAreAudited)->check();
 
     expect($result->status->value)->toBe('fail')
+        ->and($result->code)->toBe('composer-dependencies-are-audited.vulnerable')
         ->and($result->details)->toContain('1 security advisory');
 });

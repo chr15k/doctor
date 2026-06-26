@@ -5,7 +5,9 @@ namespace Laravel\Doctor\Diagnostics;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Outcome;
 use RuntimeException;
 
 class StorageIsWritable extends Diagnostic implements Fixable
@@ -15,6 +17,36 @@ class StorageIsWritable extends Diagnostic implements Fixable
     public string $group = 'storage';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'writable' => Outcome::pass('Laravel can write to the required storage directories.'),
+            'not-writable' => Outcome::fail(
+                summary: 'Laravel cannot write to every required storage directory.',
+                remediation: 'Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.',
+                confirmation: 'Would you like Doctor to make Laravel\'s storage directories writable?',
+            ),
+        ];
+    }
+
+    /**
+     * Get the diagnostic's named fix outcome definitions.
+     *
+     * @return array<string, FixOutcome>
+     */
+    protected function fixOutcomes(): array
+    {
+        return [
+            'still-not-writable' => FixOutcome::fail('Some Laravel storage directories are still not writable.'),
+            'writable' => FixOutcome::pass('Laravel storage directories are writable.'),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
@@ -22,13 +54,11 @@ class StorageIsWritable extends Diagnostic implements Fixable
         $failures = $this->failures();
 
         if ($failures === []) {
-            return DiagnosticResult::pass('Laravel can write to the required storage directories.');
+            return $this->result('writable');
         }
 
-        return DiagnosticResult::fail('Laravel cannot write to every required storage directory.')
-            ->withDetails($this->formatFailures($failures))
-            ->confirmUsing('Would you like Doctor to make Laravel\'s storage directories writable?')
-            ->suggest('Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.');
+        return $this->result('not-writable')
+            ->withDetails($this->formatFailures($failures));
     }
 
     /**
@@ -55,15 +85,15 @@ class StorageIsWritable extends Diagnostic implements Fixable
         $failures = $this->failures();
 
         if ($failures !== []) {
-            return FixResult::fail('Some Laravel storage directories are still not writable.')
+            return $this->fixResult('still-not-writable')
                 ->withDetails($this->formatFailures($failures));
         }
 
         if ($changed === []) {
-            return FixResult::pass('Laravel storage directories are writable.');
+            return $this->fixResult('writable');
         }
 
-        return FixResult::pass('Laravel storage directories are writable.')
+        return $this->fixResult('writable')
             ->withDetails(implode(PHP_EOL, $changed));
     }
 

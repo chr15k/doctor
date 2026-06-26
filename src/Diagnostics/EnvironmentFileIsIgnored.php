@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Outcome;
 
 class EnvironmentFileIsIgnored extends Diagnostic
 {
@@ -13,21 +14,39 @@ class EnvironmentFileIsIgnored extends Diagnostic
     public string $group = 'security';
 
     /**
+     * Get the diagnostic's named outcome definitions.
+     *
+     * @return array<string, Outcome>
+     */
+    protected function outcomes(): array
+    {
+        return [
+            'gitignore-missing' => Outcome::fail(
+                summary: 'The application does not have a .gitignore file.',
+                remediation: 'Add .env to .gitignore so secrets are not committed.',
+            ),
+            'ignored' => Outcome::pass('Environment files are ignored by Git.'),
+            'not-ignored' => Outcome::fail(
+                summary: 'Environment files are not ignored by Git.',
+                remediation: 'Add .env or .env* to .gitignore.',
+            ),
+        ];
+    }
+
+    /**
      * Run the diagnostic.
      */
     public function check(): DiagnosticResult
     {
         if (! File::exists($this->gitignorePath())) {
-            return DiagnosticResult::fail('The application does not have a .gitignore file.')
-                ->suggest('Add .env to .gitignore so secrets are not committed.');
+            return $this->result('gitignore-missing');
         }
 
         if ($this->ignores('.env')) {
-            return DiagnosticResult::pass('Environment files are ignored by Git.');
+            return $this->result('ignored');
         }
 
-        return DiagnosticResult::fail('Environment files are not ignored by Git.')
-            ->suggest('Add .env or .env* to .gitignore.');
+        return $this->result('not-ignored');
     }
 
     /**
