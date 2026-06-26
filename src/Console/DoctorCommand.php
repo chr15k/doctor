@@ -10,8 +10,11 @@ use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
 use Laravel\Doctor\Results\Status;
+use Laravel\Prompts\Elements\Element;
+use Laravel\Prompts\Elements\ElementContract;
 use Laravel\Prompts\Support\Logger;
 
+use function Laravel\Prompts\callout;
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\error;
 use function Laravel\Prompts\info;
@@ -296,7 +299,13 @@ class DoctorCommand extends Command
                 continue;
             }
 
-            if (! $verbose && ($outcome->result->status === Status::Pass || $outcome->result->status === Status::Skip)) {
+            if ($this->isReportableIssue($outcome)) {
+                $this->renderIssue($outcome);
+
+                continue;
+            }
+
+            if (! $verbose && in_array($outcome->result->status, [Status::Pass, Status::Skip], true)) {
                 continue;
             }
 
@@ -398,7 +407,28 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Render notice diagnostics in a compact note list.
+     * Render an issue diagnostic as a callout.
+     */
+    protected function renderIssue(DiagnosticOutcome $outcome): void
+    {
+        callout(
+            label: $outcome->diagnostic->name,
+            content: $this->diagnosticCalloutContent($outcome),
+            type: $outcome->result->status === Status::Warn ? 'warning' : 'error',
+            info: $outcome->diagnostic->source(),
+        );
+    }
+
+    /**
+     * Determine whether the diagnostic should be displayed as an issue.
+     */
+    protected function isReportableIssue(DiagnosticOutcome $outcome): bool
+    {
+        return in_array($outcome->result->status, [Status::Warn, Status::Fail, Status::Error], true);
+    }
+
+    /**
+     * Render notice diagnostics as callouts.
      *
      * @param  list<DiagnosticOutcome>  $notices
      */
@@ -408,25 +438,38 @@ class DoctorCommand extends Command
             return;
         }
 
-        $this->line('Notes:');
-
         foreach ($notices as $notice) {
-            $this->line('  - '.$this->noticeText($notice));
+            callout(
+                label: 'Notice',
+                content: $this->diagnosticCalloutContent($notice),
+            );
         }
     }
 
     /**
-     * Format a notice diagnostic as one line.
+     * Format diagnostic content for a callout.
+     *
+     * @return list<string|ElementContract>
      */
-    protected function noticeText(DiagnosticOutcome $notice): string
+    protected function diagnosticCalloutContent(DiagnosticOutcome $outcome): array
     {
-        $parts = [$notice->result->summary, ...$notice->result->remediation];
+        $content = [$outcome->result->summary];
 
-        foreach ($notice->result->links as $label => $url) {
-            $parts[] = sprintf('%s: %s', $label, $url);
+        if ($outcome->result->details !== null) {
+            $content[] = $outcome->result->details;
         }
 
-        return implode(' ', $parts);
+        if ($outcome->result->remediation !== []) {
+            $content[] = Element::heading(count($outcome->result->remediation) === 1 ? 'Suggested fix' : 'Suggested fixes');
+            $content[] = Element::bulletedList($outcome->result->remediation);
+        }
+
+        if ($outcome->result->links !== []) {
+            $content[] = Element::heading('Links');
+            $content[] = Element::keyValueList($outcome->result->links);
+        }
+
+        return $content;
     }
 
     /**

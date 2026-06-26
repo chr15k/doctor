@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Diagnostics\AsynchronousQueueIsConfigured;
@@ -19,6 +20,8 @@ use Laravel\Doctor\DoctorServiceProvider;
 use Laravel\Doctor\Facades\Doctor;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Output\OutputInterface;
 
 it('loads the package service provider', function (): void {
     expect($this->app->getProvider(DoctorServiceProvider::class))->not->toBeNull();
@@ -61,21 +64,36 @@ it('renders notice diagnostics without diagnostic source noise', function (): vo
     file_put_contents($this->app->getCachedEventsPath(), '<?php return [];');
     file_put_contents($basePath.'/storage/framework/views/example.php', '<?php echo "cached";');
 
-    $this->artisan('doctor --only=BootstrapCacheMatchesEnvironment')
-        ->expectsOutputToContain('Notes:')
-        ->expectsOutputToContain('- Events and views are cached. If recent changes are not appearing, run `php artisan optimize:clear`.')
-        ->doesntExpectOutputToContain('[notice]')
-        ->doesntExpectOutputToContain('Bootstrap cache matches environment (doctor)')
-        ->assertExitCode(0);
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', ['--only' => 'BootstrapCacheMatchesEnvironment'], $output);
+
+    expect($output->fetch())
+        ->toContain('Notice')
+        ->toContain('Events and views are cached.')
+        ->toContain('optimize:clear')
+        ->not->toContain('Notes:')
+        ->not->toContain('[notice]')
+        ->not->toContain('Bootstrap cache matches environment (doctor)')
+        ->and($exitCode)->toBe(0);
 });
 
 it('renders diagnostic links in cli output', function (): void {
     Doctor::diagnostic(LinkedDiagnostic::class);
 
-    $this->artisan('doctor --only=LinkedDiagnostic')
-        ->expectsOutputToContain('[warn] Testing diagnostic has links (application): The linked diagnostic warned.')
-        ->expectsOutputToContain('    Laravel Docs: https://laravel.com/docs')
-        ->assertExitCode(0);
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', ['--only' => 'LinkedDiagnostic'], $output);
+
+    expect($output->fetch())
+        ->toContain('Testing diagnostic has links')
+        ->toContain('The linked diagnostic warned.')
+        ->toContain('Detailed link context.')
+        ->toContain('Follow the linked documentation.')
+        ->not->toContain('[warn]')
+        ->toContain('Laravel Docs')
+        ->toContain('https://laravel.com/docs')
+        ->and($exitCode)->toBe(0);
 });
 
 it('renders diagnostic links in json output', function (): void {

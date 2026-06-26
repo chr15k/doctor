@@ -1,8 +1,10 @@
 <?php
 
+use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\DatabaseDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\LaravelPackageDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 
@@ -38,4 +40,23 @@ it('filters diagnostics by resolved package', function (): void {
 
     expect(DiagnosticSelection::make(only: ['vendor/package'])->matches($diagnostic))->toBeTrue()
         ->and(DiagnosticSelection::make(except: ['vendor/package'])->matches($diagnostic))->toBeFalse();
+});
+
+it('filters diagnostics by wildcard package selectors', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostics([
+        PassingDiagnostic::class,
+        PackagedDiagnostic::class,
+        LaravelPackageDiagnostic::class,
+    ]);
+
+    $report = $doctor->run(DiagnosticSelection::make(only: ['laravel/*']));
+
+    expect($report->diagnostics())->toHaveCount(1)
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(LaravelPackageDiagnostic::class);
+});
+
+it('filters bundled doctor diagnostics by package selector', function (): void {
+    expect(DiagnosticSelection::make(only: ['laravel/doctor'])->matches(new ApplicationKeyIsSet))->toBeTrue()
+        ->and(DiagnosticSelection::make(only: ['laravel/*'])->matches(new ApplicationKeyIsSet))->toBeTrue()
+        ->and(DiagnosticSelection::make(except: ['laravel/doctor'])->matches(new ApplicationKeyIsSet))->toBeFalse();
 });

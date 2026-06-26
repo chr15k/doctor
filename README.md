@@ -61,7 +61,7 @@ By default, the command exits with a failing status when a diagnostic fails or e
 
 ## Selecting Diagnostics
 
-Diagnostics may be selected or excluded by class name, group, or package. Multiple values may be passed either by repeating the option or by separating values with commas.
+Diagnostics may be selected or excluded by class name, group, package, or package wildcard. Multiple values may be passed either by repeating the option or by separating values with commas.
 
 ```bash
 php artisan doctor --only=storage
@@ -69,6 +69,10 @@ php artisan doctor --only=storage
 php artisan doctor --only=StorageIsWritable
 
 php artisan doctor --only=vendor/package
+
+php artisan doctor --except=laravel/*
+
+php artisan doctor --except=laravel/doctor
 
 php artisan doctor --except=storage
 ```

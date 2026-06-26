@@ -31,6 +31,6 @@ class AsynchronousQueueIsConfigured extends Diagnostic
         }
 
         return DiagnosticResult::notice('Queued jobs are processed asynchronously.')
-            ->suggest('Make sure a queue worker is running with `php artisan queue:work` or Horizon if jobs are not being processed.');
+            ->suggest('If jobs are not being processed be sure to start your queue worker.');
     }
 }

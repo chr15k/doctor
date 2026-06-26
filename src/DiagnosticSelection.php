@@ -94,6 +94,45 @@ class DiagnosticSelection
         return $criterion === $diagnostic::class
             || $criterion === class_basename($diagnostic)
             || $criterion === $diagnostic->group
-            || $criterion === $diagnostic->package();
+            || $this->matchesPackage($criterion, $diagnostic);
+    }
+
+    /**
+     * Determine whether a criterion matches one of the diagnostic's package selectors.
+     */
+    protected function matchesPackage(string $criterion, Diagnostic $diagnostic): bool
+    {
+        foreach ($this->packages($diagnostic) as $package) {
+            if ($criterion === $package) {
+                return true;
+            }
+
+            if (str_ends_with($criterion, '/*') && str_starts_with($package, substr($criterion, 0, -1))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the Composer package selectors for the diagnostic.
+     *
+     * @return list<string>
+     */
+    protected function packages(Diagnostic $diagnostic): array
+    {
+        $packages = [];
+        $package = $diagnostic->package();
+
+        if ($package !== null) {
+            $packages[] = $package;
+        }
+
+        if (str_starts_with($diagnostic::class, 'Laravel\\Doctor\\Diagnostics\\')) {
+            $packages[] = 'laravel/doctor';
+        }
+
+        return array_values(array_unique($packages));
     }
 }
