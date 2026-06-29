@@ -3,7 +3,11 @@
 use Laravel\Doctor\Diagnostics\QueueConnectionIsAsynchronous;
 
 it('passes when queues run synchronously', function (): void {
-    config(['queue.default' => 'sync']);
+    $this->app->detectEnvironment(fn (): string => 'local');
+
+    config([
+        'queue.default' => 'sync',
+    ]);
 
     $result = (new QueueConnectionIsAsynchronous)->check();
 
@@ -21,9 +25,20 @@ it('warns when queues run synchronously in production', function (): void {
         ->and($result->summary)->toBe('Queued jobs run synchronously in production.');
 });
 
+it('warns when queues run synchronously in unmapped environments', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'staging');
+    config(['queue.default' => 'sync']);
+
+    $result = (new QueueConnectionIsAsynchronous)->check();
+
+    expect($result->status->value)->toBe('warn')
+        ->and($result->summary)->toBe('Queued jobs run synchronously in production.');
+});
+
 it('notices when queued jobs are processed asynchronously locally', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'local');
+
     config([
-        'app.env' => 'local',
         'queue.default' => 'database',
     ]);
 

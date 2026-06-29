@@ -17,7 +17,7 @@ it('passes when bootstrap files are not cached locally', function (): void {
 
     $this->app->setBasePath($basePath);
     $this->app->useStoragePath($basePath.'/storage');
-    config(['app.env' => 'local']);
+    $this->app->detectEnvironment(fn (): string => 'local');
     config(['view.compiled' => $basePath.'/storage/framework/views']);
 
     $result = (new BootstrapCacheMatchesEnvironment)->check();
@@ -45,7 +45,7 @@ it('notices when bootstrap files are cached locally', function (): void {
 
     $this->app->setBasePath($basePath);
     $this->app->useStoragePath($basePath.'/storage');
-    config(['app.env' => 'local']);
+    $this->app->detectEnvironment(fn (): string => 'local');
     config(['view.compiled' => $basePath.'/storage/framework/views']);
 
     file_put_contents($this->app->getCachedConfigPath(), '<?php return [];');
@@ -66,7 +66,7 @@ it('notices when one bootstrap file is cached locally', function (): void {
 
     $this->app->setBasePath($basePath);
     $this->app->useStoragePath($basePath.'/storage');
-    config(['app.env' => 'local']);
+    $this->app->detectEnvironment(fn (): string => 'local');
     config(['view.compiled' => $basePath.'/storage/framework/views']);
 
     file_put_contents($this->app->getCachedConfigPath(), '<?php return [];');

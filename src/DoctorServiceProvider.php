@@ -41,6 +41,8 @@ class DoctorServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/doctor.php', 'doctor');
+
         $this->app->singleton(Doctor::class, function (Application $app): Doctor {
             return (new Doctor($app))->diagnostics([
                 EnvironmentFileExists::class,
@@ -84,6 +86,10 @@ class DoctorServiceProvider extends ServiceProvider
             $this->commands([
                 DoctorCommand::class,
             ]);
+
+            $this->publishes([
+                __DIR__.'/../config/doctor.php' => config_path('doctor.php'),
+            ], 'doctor-config');
         }
     }
 }

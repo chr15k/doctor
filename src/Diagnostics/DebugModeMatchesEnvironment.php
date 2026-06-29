@@ -3,6 +3,7 @@
 namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -45,6 +46,6 @@ class DebugModeMatchesEnvironment extends Diagnostic
      */
     private function debugIsEnabledInProduction(): bool
     {
-        return (bool) config('app.debug') && app()->environment('production');
+        return (bool) config('app.debug') && EnvironmentMode::current()->isProduction();
     }
 }

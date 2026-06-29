@@ -159,11 +159,11 @@ class Doctor
      *
      * @return array<string, string>
      */
-    public function availableGroups(): array
+    public function availableGroups(?DiagnosticSelection $selection = null): array
     {
         $groups = [];
 
-        foreach ($this->selected() as $diagnostic) {
+        foreach ($this->selected($selection) as $diagnostic) {
             $groups[$diagnostic->group] = ucfirst($diagnostic->group);
         }
 

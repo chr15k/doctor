@@ -3,6 +3,7 @@
 namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -45,7 +46,7 @@ class QueueConnectionIsAsynchronous extends Diagnostic
             return $this->result('not-configured');
         }
 
-        if ($connection === 'sync' && ! app()->environment(['local', 'testing'])) {
+        if ($connection === 'sync' && EnvironmentMode::current()->isProduction()) {
             return $this->result('sync-production');
         }
 
@@ -53,7 +54,7 @@ class QueueConnectionIsAsynchronous extends Diagnostic
             return $this->result('sync-local');
         }
 
-        if (! app()->environment(['local', 'testing'])) {
+        if (EnvironmentMode::current()->isProduction()) {
             return $this->result('async');
         }
 

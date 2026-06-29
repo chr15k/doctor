@@ -167,6 +167,9 @@ class DoctorCommand extends Command
     protected function selection(Doctor $doctor): DiagnosticSelection
     {
         $selection = DiagnosticSelection::make(
+            only: $this->configList('only'),
+            except: $this->configList('except'),
+        )->constrain(
             only: $this->optionList('only'),
             except: $this->optionList('except'),
         );
@@ -175,7 +178,7 @@ class DoctorCommand extends Command
             return $selection;
         }
 
-        $groups = $doctor->availableGroups();
+        $groups = $doctor->availableGroups($selection);
 
         if ($groups === []) {
             return $selection;
@@ -192,9 +195,8 @@ class DoctorCommand extends Command
             return $selection;
         }
 
-        return DiagnosticSelection::make(
+        return $selection->constrain(
             only: array_map(strval(...), $selected),
-            except: $selection->except,
         );
     }
 
@@ -212,6 +214,40 @@ class DoctorCommand extends Command
         }
 
         return array_values(array_filter($value, is_string(...)));
+    }
+
+    /**
+     * Get a normalized list configuration value.
+     *
+     * @return list<string>
+     */
+    protected function configList(string $name): array
+    {
+        $value = config('doctor.'.$name, []);
+
+        if (is_string($value)) {
+            return [$value];
+        }
+
+        if (! is_iterable($value)) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($value as $key => $item) {
+            if (is_string($key)) {
+                $values[] = $key;
+
+                continue;
+            }
+
+            if (is_string($item)) {
+                $values[] = $item;
+            }
+        }
+
+        return array_values(array_unique($values));
     }
 
     /**

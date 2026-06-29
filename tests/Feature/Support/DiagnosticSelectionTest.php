@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
+use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\DatabaseDiagnostic;
@@ -60,4 +61,21 @@ it('filters bundled doctor diagnostics by package selector', function (): void {
     expect(DiagnosticSelection::make(only: ['laravel/doctor'])->matches(new ApplicationKeyIsSet))->toBeTrue()
         ->and(DiagnosticSelection::make(only: ['laravel/*'])->matches(new ApplicationKeyIsSet))->toBeTrue()
         ->and(DiagnosticSelection::make(except: ['laravel/doctor'])->matches(new ApplicationKeyIsSet))->toBeFalse();
+});
+
+it('narrows diagnostics with additional only constraints', function (): void {
+    $selection = DiagnosticSelection::make(only: ['security'])
+        ->constrain(only: ['EnvironmentFileIsGitIgnored']);
+
+    expect($selection->matches(new EnvironmentFileIsGitIgnored))->toBeTrue()
+        ->and($selection->matches(new ApplicationKeyIsSet))->toBeFalse();
+});
+
+it('stacks additional except selectors', function (): void {
+    $selection = DiagnosticSelection::make(except: ['security'])
+        ->constrain(except: ['environment']);
+
+    expect($selection->matches(new EnvironmentFileIsGitIgnored))->toBeFalse()
+        ->and($selection->matches(new ApplicationKeyIsSet))->toBeFalse()
+        ->and($selection->matches(new DatabaseDiagnostic))->toBeTrue();
 });

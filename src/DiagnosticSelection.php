@@ -5,16 +5,52 @@ namespace Laravel\Doctor;
 class DiagnosticSelection
 {
     /**
+     * The normalized selectors diagnostics must match.
+     *
+     * @var list<string>
+     */
+    public array $only = [];
+
+    /**
+     * The normalized selectors diagnostics must not match.
+     *
+     * @var list<string>
+     */
+    public array $except = [];
+
+    /**
+     * The normalized only constraints that must all match.
+     *
+     * @var list<list<string>>
+     */
+    protected array $onlyConstraints = [];
+
+    /**
      * Create a new diagnostic selection instance.
      *
-     * @param  list<string>  $only
-     * @param  list<string>  $except
+     * @param  iterable<string>  $only
+     * @param  iterable<string>  $except
+     * @param  list<iterable<string>>  $onlyConstraints
      */
     public function __construct(
-        public array $only = [],
-        public array $except = [],
+        iterable $only = [],
+        iterable $except = [],
+        array $onlyConstraints = [],
     ) {
-        //
+        $this->only = self::normalize($only);
+        $this->except = self::normalize($except);
+
+        foreach ($onlyConstraints as $constraint) {
+            $normalized = self::normalize($constraint);
+
+            if ($normalized !== []) {
+                $this->onlyConstraints[] = $normalized;
+            }
+        }
+
+        if ($this->onlyConstraints === [] && $this->only !== []) {
+            $this->onlyConstraints[] = $this->only;
+        }
     }
 
     /**
@@ -25,9 +61,27 @@ class DiagnosticSelection
      */
     public static function make(iterable $only = [], iterable $except = []): self
     {
+        return new self(only: $only, except: $except);
+    }
+
+    /**
+     * Add another selection constraint.
+     *
+     * @param  iterable<string>  $only
+     * @param  iterable<string>  $except
+     */
+    public function constrain(iterable $only = [], iterable $except = []): self
+    {
+        $only = self::normalize($only);
+        $except = self::normalize($except);
+
         return new self(
-            only: self::normalize($only),
-            except: self::normalize($except),
+            only: $only !== [] ? $only : $this->only,
+            except: [...$this->except, ...$except],
+            onlyConstraints: [
+                ...$this->onlyConstraints,
+                ...($only !== [] ? [$only] : []),
+            ],
         );
     }
 
@@ -36,8 +90,10 @@ class DiagnosticSelection
      */
     public function matches(Diagnostic $diagnostic): bool
     {
-        if ($this->only !== [] && ! $this->matchesAny($this->only, $diagnostic)) {
-            return false;
+        foreach ($this->onlyConstraints as $criteria) {
+            if (! $this->matchesAny($criteria, $diagnostic)) {
+                return false;
+            }
         }
 
         if ($this->except !== [] && $this->matchesAny($this->except, $diagnostic)) {

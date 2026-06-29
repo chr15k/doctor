@@ -83,6 +83,43 @@ You may also choose diagnostic groups interactively:
 php artisan doctor --interactive
 ```
 
+## Configuring Doctor
+
+To configure persistent diagnostic selection and environment modes, publish Doctor's configuration file:
+
+```bash
+php artisan vendor:publish --tag=doctor-config
+```
+
+The `only` and `except` options accept the same selectors as the command line: diagnostic class names, groups, packages, or package wildcards.
+
+```php
+'only' => [
+    // 'laravel/doctor',
+    // 'vendor/*',
+    // 'security',
+],
+
+'except' => [
+    // \Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored::class,
+],
+```
+
+Configured `only` selectors act as a persistent allowlist. Passing `--only` at runtime narrows that allowlist further, while configured `except` selectors and `--except` are combined.
+
+Doctor maps Laravel environment names to one of its supported modes:
+
+```php
+'environments' => [
+    'local' => 'local',
+    'production' => 'production',
+    'dev' => 'local',
+    'staging' => 'production',
+],
+```
+
+Any environment not listed is treated as `production`.
+
 ## Default Diagnostics
 
 Doctor ships with a focused suite of diagnostics that cover common configuration, environment, dependency, database, queue, and storage problems. The default suite includes:

@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -42,14 +43,14 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
         $cached = $this->cachedFiles();
 
         if ($cached === []) {
-            if (! app()->environment(['local', 'testing'])) {
+            if (EnvironmentMode::current()->isProduction()) {
                 return $this->result('uncached-production');
             }
 
             return $this->result('uncached-local');
         }
 
-        if (! app()->environment(['local', 'testing'])) {
+        if (EnvironmentMode::current()->isProduction()) {
             return $this->result('cached-production');
         }
 

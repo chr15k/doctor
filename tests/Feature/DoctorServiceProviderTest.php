@@ -54,6 +54,15 @@ it('does not redefine Symfony console verbosity options', function (): void {
         ->and($command->getDefinition()->hasOption('format'))->toBeTrue();
 });
 
+it('loads the default doctor configuration', function (): void {
+    expect(config('doctor.only'))->toBe([])
+        ->and(config('doctor.except'))->toBe([])
+        ->and(config('doctor.environments'))->toBe([
+            'local' => 'local',
+            'production' => 'production',
+        ]);
+});
+
 it('does not repeat diagnostics that were fixed', function (): void {
     config(['app.key' => '']);
 
@@ -163,7 +172,7 @@ it('renders notice diagnostics without diagnostic source noise', function (): vo
 
     $this->app->setBasePath($basePath);
     $this->app->useStoragePath($basePath.'/storage');
-    config(['app.env' => 'local']);
+    $this->app->detectEnvironment(fn (): string => 'local');
     config(['view.compiled' => $basePath.'/storage/framework/views']);
 
     file_put_contents($this->app->getCachedEventsPath(), '<?php return [];');
@@ -192,8 +201,8 @@ it('renders multiple notice diagnostics in a single callout', function (): void 
 
     $this->app->setBasePath($basePath);
     $this->app->useStoragePath($basePath.'/storage');
+    $this->app->detectEnvironment(fn (): string => 'local');
     config([
-        'app.env' => 'local',
         'queue.default' => 'database',
         'view.compiled' => $basePath.'/storage/framework/views',
     ]);
@@ -234,8 +243,8 @@ it('groups notice diagnostics by package source', function (): void {
 
     $this->app->setBasePath($basePath);
     $this->app->useStoragePath($basePath.'/storage');
+    $this->app->detectEnvironment(fn (): string => 'local');
     config([
-        'app.env' => 'local',
         'queue.default' => 'database',
         'view.compiled' => $basePath.'/storage/framework/views',
     ]);
@@ -342,6 +351,60 @@ it('validates fail-on before running diagnostics', function (): void {
         ->expectsOutputToContain('The --fail-on option must be one of: fail, warn, never.')
         ->doesntExpectOutputToContain('The linked diagnostic warned.')
         ->assertExitCode(1);
+});
+
+it('applies configured only selectors', function (): void {
+    config(['doctor.only' => ['ApplicationKeyIsSet']]);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--format' => 'json',
+        '--fail-on' => 'never',
+    ], $output);
+
+    $payload = json_decode($output->fetch(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['diagnostics'])->toHaveCount(1)
+        ->and($payload['diagnostics'][0]['class'])->toBe(ApplicationKeyIsSet::class)
+        ->and($exitCode)->toBe(0);
+});
+
+it('applies configured except selectors', function (): void {
+    config([
+        'doctor.only' => ['ApplicationKeyIsSet', 'EnvironmentFileExists'],
+        'doctor.except' => ['ApplicationKeyIsSet'],
+    ]);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--format' => 'json',
+        '--fail-on' => 'never',
+    ], $output);
+
+    $payload = json_decode($output->fetch(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['diagnostics'])->toHaveCount(1)
+        ->and($payload['diagnostics'][0]['class'])->toBe(EnvironmentFileExists::class)
+        ->and($exitCode)->toBe(0);
+});
+
+it('narrows configured only selectors with command only selectors', function (): void {
+    config(['doctor.only' => ['security']]);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'EnvironmentFileExists',
+        '--format' => 'json',
+        '--fail-on' => 'never',
+    ], $output);
+
+    $payload = json_decode($output->fetch(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['diagnostics'])->toBe([])
+        ->and($exitCode)->toBe(0);
 });
 
 it('binds the doctor service and facade', function (): void {
