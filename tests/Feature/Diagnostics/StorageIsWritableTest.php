@@ -51,7 +51,7 @@ it('passes when laravel can write to the required storage directories', function
 
     expect($outcome->diagnostic::class)->toBe(StorageIsWritable::class)
         ->and($outcome->result->status->value)->toBe('pass')
-        ->and($outcome->result->summary)->toBe('Laravel can write to the required storage directories.');
+        ->and($outcome->result->summary)->toBe('Laravel storage directories are writable.');
 });
 
 it('reports missing writable storage directories', function (): void {

@@ -5,7 +5,6 @@ namespace Laravel\Doctor\Diagnostics;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 use RuntimeException;
@@ -24,25 +23,13 @@ class StorageIsWritable extends Diagnostic implements Fixable
     protected function outcomes(): array
     {
         return [
-            'writable' => Outcome::pass('Laravel can write to the required storage directories.'),
+            'writable' => Outcome::pass('Laravel storage directories are writable.'),
             'not-writable' => Outcome::fail(
                 summary: 'Laravel cannot write to every required storage directory.',
                 remediation: 'Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.',
                 confirmation: 'Would you like Doctor to make Laravel\'s storage directories writable?',
             ),
-        ];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
-    {
-        return [
-            'still-not-writable' => FixOutcome::fail('Some Laravel storage directories are still not writable.'),
-            'writable' => FixOutcome::pass('Laravel storage directories are writable.'),
+            'still-not-writable' => Outcome::fail('Some Laravel storage directories are still not writable.'),
         ];
     }
 

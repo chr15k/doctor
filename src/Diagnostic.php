@@ -5,7 +5,6 @@ namespace Laravel\Doctor;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 use Stringable;
@@ -36,16 +35,6 @@ abstract class Diagnostic
      * @return array<string, Outcome>
      */
     protected function outcomes(): array
-    {
-        return [];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
     {
         return [];
     }
@@ -82,13 +71,13 @@ abstract class Diagnostic
     }
 
     /**
-     * Create a fix result from a named fix outcome.
+     * Create a fix result from a named outcome.
      *
      * @param  array<string, bool|float|int|string|Stringable|null>  $replace
      */
     protected function fixResult(string $outcome, array $replace = []): FixResult
     {
-        $definition = $this->fixOutcome($outcome);
+        $definition = $this->outcome($outcome);
 
         return new FixResult(
             $definition->status,
@@ -107,24 +96,6 @@ abstract class Diagnostic
         if (! $definition instanceof Outcome) {
             throw new InvalidArgumentException(sprintf(
                 'Outcome [%s] is not defined for diagnostic [%s].',
-                $outcome,
-                static::class,
-            ));
-        }
-
-        return $definition;
-    }
-
-    /**
-     * Get a named fix outcome definition.
-     */
-    protected function fixOutcome(string $outcome): FixOutcome
-    {
-        $definition = $this->fixOutcomes()[$outcome] ?? null;
-
-        if (! $definition instanceof FixOutcome) {
-            throw new InvalidArgumentException(sprintf(
-                'Fix outcome [%s] is not defined for diagnostic [%s].',
                 $outcome,
                 static::class,
             ));

@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -32,21 +31,10 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
                 remediation: 'Create the SQLite database file at the configured path.',
                 confirmation: 'Would you like Doctor to create the SQLite database file?',
             ),
-        ];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
-    {
-        return [
-            'path-missing' => FixOutcome::fail('The SQLite database file path was not available from the diagnostic result.'),
-            'already-exists' => FixOutcome::skip('The SQLite database file already exists.'),
-            'creation-failed' => FixOutcome::fail('The SQLite database file could not be created.'),
-            'created' => FixOutcome::pass('The SQLite database file was created.'),
+            'path-missing' => Outcome::fail('The SQLite database file path was not available from the diagnostic result.'),
+            'already-exists' => Outcome::skip('The SQLite database file already exists.'),
+            'creation-failed' => Outcome::fail('The SQLite database file could not be created.'),
+            'created' => Outcome::pass('The SQLite database file was created.'),
         ];
     }
 

@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -32,19 +31,8 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
                 remediation: 'Regenerate Composer autoload files with `composer dump-autoload`.',
                 confirmation: 'Would you like Doctor to regenerate Composer autoload files using `composer dump-autoload`?',
             ),
-        ];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
-    {
-        return [
-            'regeneration-failed' => FixOutcome::fail('Composer autoload files could not be regenerated.'),
-            'regenerated' => FixOutcome::pass('Composer autoload files were regenerated.'),
+            'regeneration-failed' => Outcome::fail('Composer autoload files could not be regenerated.'),
+            'regenerated' => Outcome::pass('Composer autoload files were regenerated.'),
         ];
     }
 

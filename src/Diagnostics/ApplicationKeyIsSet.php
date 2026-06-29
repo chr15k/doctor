@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -30,19 +29,8 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
                 remediation: 'Generate an application key with `php artisan key:generate`.',
                 confirmation: 'Would you like Doctor to generate an application key using `artisan key:generate`?',
             ),
-        ];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
-    {
-        return [
-            'generated' => FixOutcome::pass('The application key was generated.'),
-            'generation-failed' => FixOutcome::fail('The application key could not be generated.'),
+            'generated' => Outcome::pass('The application key was generated.'),
+            'generation-failed' => Outcome::fail('The application key could not be generated.'),
         ];
     }
 

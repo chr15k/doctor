@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -32,19 +31,8 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
                 remediation: 'Create the public storage link with `php artisan storage:link`.',
                 confirmation: 'Would you like Doctor to create the public storage link using `artisan storage:link`?',
             ),
-        ];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
-    {
-        return [
-            'creation-failed' => FixOutcome::fail('The public storage link could not be created.'),
-            'created' => FixOutcome::pass('The public storage link was created.'),
+            'creation-failed' => Outcome::fail('The public storage link could not be created.'),
+            'created' => Outcome::pass('The public storage link was created.'),
         ];
     }
 

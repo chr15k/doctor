@@ -5,7 +5,6 @@ namespace Laravel\Doctor\Diagnostics;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\FixOutcome;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
 
@@ -33,21 +32,10 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
                 remediation: 'Copy the example environment file to .env, then review its values.',
                 confirmation: 'Would you like Doctor to copy .env.example to .env?',
             ),
-        ];
-    }
-
-    /**
-     * Get the diagnostic's named fix outcome definitions.
-     *
-     * @return array<string, FixOutcome>
-     */
-    protected function fixOutcomes(): array
-    {
-        return [
-            'already-exists' => FixOutcome::skip('The .env file already exists.'),
-            'example-missing' => FixOutcome::fail('The .env.example file does not exist.'),
-            'creation-failed' => FixOutcome::fail('The .env file could not be created from .env.example.'),
-            'created' => FixOutcome::pass('The .env file was created from .env.example.'),
+            'already-exists' => Outcome::skip('The .env file already exists.'),
+            'example-missing' => Outcome::fail('The .env.example file does not exist.'),
+            'creation-failed' => Outcome::fail('The .env file could not be created from .env.example.'),
+            'created' => Outcome::pass('The .env file was created from .env.example.'),
         ];
     }
 
