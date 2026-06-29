@@ -9,9 +9,35 @@ use Throwable;
 class DiagnosticSource
 {
     /**
-     * @var array<class-string, string|null>
+     * @var array<class-string, self>
      */
-    private static array $packages = [];
+    private static array $sources = [];
+
+    /**
+     * Create a new diagnostic source instance.
+     */
+    public function __construct(
+        public readonly ?string $package,
+        public readonly ?string $file,
+        public readonly ?string $relativeFile,
+        public readonly bool $application,
+    ) {
+        //
+    }
+
+    /**
+     * Resolve the source metadata for the given diagnostic class.
+     *
+     * @param  class-string  $class
+     */
+    public static function resolve(string $class): self
+    {
+        if (! array_key_exists($class, self::$sources)) {
+            self::$sources[$class] = self::resolveSource($class);
+        }
+
+        return self::$sources[$class];
+    }
 
     /**
      * Resolve the Composer package for the given diagnostic class.
@@ -20,11 +46,7 @@ class DiagnosticSource
      */
     public static function package(string $class): ?string
     {
-        if (! array_key_exists($class, self::$packages)) {
-            self::$packages[$class] = self::resolvePackage($class);
-        }
-
-        return self::$packages[$class];
+        return self::resolve($class)->package;
     }
 
     /**
@@ -34,33 +56,62 @@ class DiagnosticSource
      */
     public static function source(string $class): string
     {
-        $package = self::package($class);
-
-        if ($package !== null) {
-            return 'package ['.$package.']';
-        }
-
-        return str_starts_with($class, 'Laravel\\Doctor\\Diagnostics\\')
-            ? 'doctor'
-            : 'application';
+        return self::resolve($class)->display();
     }
 
     /**
-     * Resolve the Composer package for the given diagnostic class.
+     * Determine whether the diagnostic belongs to the application source.
      *
      * @param  class-string  $class
      */
-    protected static function resolvePackage(string $class): ?string
+    public static function application(string $class): bool
+    {
+        return self::resolve($class)->application;
+    }
+
+    /**
+     * Get the display label for the source.
+     */
+    public function display(): string
+    {
+        return $this->displayForPackage($this->package);
+    }
+
+    /**
+     * Get the display label for the source using an explicit package.
+     */
+    public function displayForPackage(?string $package): string
+    {
+        return $package ?? 'application';
+    }
+
+    /**
+     * Resolve the source metadata for the given diagnostic class.
+     *
+     * @param  class-string  $class
+     */
+    protected static function resolveSource(string $class): self
     {
         $file = self::classFile($class);
 
         if ($file === null) {
-            return null;
+            return new self(
+                package: null,
+                file: null,
+                relativeFile: null,
+                application: true,
+            );
         }
 
         $package = self::installedPackageForFile($file);
+        $path = $package !== null ? self::packagePath($package) : null;
 
-        return $package === 'laravel/doctor' ? null : $package;
+        return new self(
+            package: $package,
+            file: $file,
+            relativeFile: $path !== null ? self::relativePath($path, $file) : null,
+            application: self::isApplicationSource($class, $file),
+        );
     }
 
     /**
@@ -83,6 +134,22 @@ class DiagnosticSource
         $realPath = realpath($file);
 
         return $realPath === false ? null : $realPath;
+    }
+
+    /**
+     * Determine whether a diagnostic class belongs to the application.
+     *
+     * @param  class-string  $class
+     */
+    protected static function isApplicationSource(string $class, string $file): bool
+    {
+        if (str_starts_with($class, 'Laravel\\Doctor\\Diagnostics\\')) {
+            return false;
+        }
+
+        $root = self::rootPackagePath();
+
+        return $root !== null && self::contains($root, $file);
     }
 
     /**
@@ -119,6 +186,50 @@ class DiagnosticSource
         }
 
         return $match;
+    }
+
+    /**
+     * Get the installation path for a Composer package.
+     */
+    protected static function packagePath(string $package): ?string
+    {
+        try {
+            $path = InstalledVersions::getInstallPath($package);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_string($path)) {
+            return null;
+        }
+
+        $realPath = realpath($path);
+
+        return $realPath === false ? null : $realPath;
+    }
+
+    /**
+     * Get the root Composer package path.
+     */
+    protected static function rootPackagePath(): ?string
+    {
+        $path = InstalledVersions::getRootPackage()['install_path'];
+
+        $realPath = realpath($path);
+
+        return $realPath === false ? null : $realPath;
+    }
+
+    /**
+     * Get the file path relative to its package root.
+     */
+    protected static function relativePath(string $directory, string $file): string
+    {
+        if ($file === $directory) {
+            return basename($file);
+        }
+
+        return substr($file, strlen($directory) + 1);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Laravel\Doctor\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSelection;
@@ -428,7 +429,7 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Render notice diagnostics as callouts.
+     * Render notice diagnostics as callouts grouped by source.
      *
      * @param  list<DiagnosticOutcome>  $notices
      */
@@ -438,12 +439,89 @@ class DoctorCommand extends Command
             return;
         }
 
-        foreach ($notices as $notice) {
+        foreach ($this->noticesBySource($notices) as $source => $sourceNotices) {
             callout(
-                label: 'Notice',
-                content: $this->diagnosticCalloutContent($notice),
+                label: Str::plural('Notice', count($sourceNotices)),
+                content: $this->noticesCalloutContent($sourceNotices),
+                info: $source,
             );
         }
+    }
+
+    /**
+     * @param  list<DiagnosticOutcome>  $notices
+     * @return array<string, list<DiagnosticOutcome>>
+     */
+    protected function noticesBySource(array $notices): array
+    {
+        $grouped = [];
+
+        foreach ($notices as $notice) {
+            $grouped[$notice->diagnostic->source()][] = $notice;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Format notice content for a callout.
+     *
+     * @param  list<DiagnosticOutcome>  $notices
+     * @return list<string|ElementContract>
+     */
+    protected function noticesCalloutContent(array $notices): array
+    {
+        $content = count($notices) === 1
+            ? [$this->noticeItem($notices[0])]
+            : [Element::bulletedList(array_map(
+                fn (DiagnosticOutcome $notice): string => $this->noticeItem($notice),
+                $notices,
+            ), spaced: true)];
+
+        $links = $this->noticeLinks($notices);
+
+        if ($links !== []) {
+            $content[] = Element::heading('Links');
+            $content[] = Element::keyValueList($links);
+        }
+
+        return $content;
+    }
+
+    /**
+     * Format a notice as a compact list item.
+     */
+    protected function noticeItem(DiagnosticOutcome $outcome): string
+    {
+        $parts = [$outcome->result->summary];
+
+        if ($outcome->result->details !== null) {
+            $parts[] = $outcome->result->details;
+        }
+
+        if ($outcome->result->remediation !== null) {
+            $parts[] = $outcome->result->remediation;
+        }
+
+        return Str::squish(implode(' ', $parts));
+    }
+
+    /**
+     * @param  list<DiagnosticOutcome>  $notices
+     * @return array<string, string>
+     */
+    protected function noticeLinks(array $notices): array
+    {
+        $links = [];
+
+        foreach ($notices as $notice) {
+            $links = [
+                ...$links,
+                ...$notice->result->links,
+            ];
+        }
+
+        return $links;
     }
 
     /**
@@ -507,10 +585,11 @@ class DoctorCommand extends Command
         return json_encode([
             'version' => 1,
             'diagnostics' => array_map(
-                static fn (DiagnosticOutcome $outcome) => [
+                fn (DiagnosticOutcome $outcome) => [
                     'class' => $outcome->diagnostic::class,
                     'group' => $outcome->diagnostic->group,
                     'name' => $outcome->diagnostic->name,
+                    'source' => $this->jsonSource($outcome),
                     'code' => $outcome->result->code,
                     'status' => $outcome->result->status->value,
                     'summary' => $outcome->result->summary,
@@ -540,10 +619,33 @@ class DoctorCommand extends Command
             $this->line(sprintf(
                 '::%s title=%s::%s',
                 $level,
-                $this->escapeGithubCommand($outcome->diagnostic->name),
+                $this->escapeGithubCommand($this->githubTitle($outcome)),
                 $this->escapeGithubCommand($this->githubSummary($outcome)),
             ));
         }
+    }
+
+    /**
+     * Build a JSON source payload.
+     *
+     * @return array{label: string, package: string|null, file: string|null, application: bool}
+     */
+    protected function jsonSource(DiagnosticOutcome $outcome): array
+    {
+        return [
+            'label' => $outcome->diagnostic->source(),
+            'package' => $outcome->diagnostic->package(),
+            'file' => $outcome->diagnostic->diagnosticSource()->relativeFile,
+            'application' => $outcome->diagnostic->application(),
+        ];
+    }
+
+    /**
+     * Build a GitHub annotation title.
+     */
+    protected function githubTitle(DiagnosticOutcome $outcome): string
+    {
+        return sprintf('%s (%s)', $outcome->diagnostic->name, $outcome->diagnostic->source());
     }
 
     /**

@@ -152,7 +152,7 @@ abstract class Diagnostic
      */
     public function package(): ?string
     {
-        return DiagnosticSource::package(static::class);
+        return $this->diagnosticSource()->package;
     }
 
     /**
@@ -160,6 +160,28 @@ abstract class Diagnostic
      */
     public function source(): string
     {
-        return DiagnosticSource::source(static::class);
+        return $this->diagnosticSource()->displayForPackage($this->package());
+    }
+
+    /**
+     * Determine whether the diagnostic belongs to the application source.
+     */
+    public function application(): bool
+    {
+        $source = $this->diagnosticSource();
+
+        if ($this->package() !== $source->package) {
+            return $this->package() === null;
+        }
+
+        return $source->application;
+    }
+
+    /**
+     * Get the resolved diagnostic source metadata.
+     */
+    public function diagnosticSource(): DiagnosticSource
+    {
+        return DiagnosticSource::resolve(static::class);
     }
 }

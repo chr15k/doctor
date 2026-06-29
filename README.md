@@ -175,12 +175,12 @@ public function boot(): void
 }
 ```
 
-Reports show each diagnostic's source next to its name. Doctor uses `application` for app diagnostics, `doctor` for its bundled diagnostics, and `package [vendor/package]` for diagnostics from installed Composer packages:
+Reports show each diagnostic's source next to its name. The source is the Composer package that provides the diagnostic:
 
 ```text
-[fail] Storage is writable (doctor): Laravel cannot write to every required storage directory.
-[pass] SQLite database exists (application): The SQLite database file exists.
-[warn] Horizon is running (package [laravel/horizon]): Horizon is not currently running.
+[fail] Storage is writable (laravel/doctor): Laravel cannot write to every required storage directory.
+[pass] SQLite database exists (acme/application): The SQLite database file exists.
+[warn] Horizon is running (laravel/horizon): Horizon is not currently running.
 ```
 
 ## Output Formats

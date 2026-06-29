@@ -2,6 +2,7 @@
 
 use Illuminate\Console\Command;
 use Laravel\Doctor\Contracts\Fixable;
+use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\DiagnosticSource;
 use Laravel\Doctor\Doctor;
@@ -33,10 +34,14 @@ it('rejects classes that are not diagnostics', function (): void {
 })->throws(InvalidArgumentException::class);
 
 it('resolves diagnostic sources from the class file', function (): void {
-    expect(DiagnosticSource::package(PassingDiagnostic::class))->toBeNull()
+    expect(DiagnosticSource::package(PassingDiagnostic::class))->toBe('laravel/doctor')
         ->and(DiagnosticSource::package(Command::class))->toBe('laravel/framework')
-        ->and((new PassingDiagnostic)->source())->toBe('application')
-        ->and((new PassingDiagnostic)->package())->toBeNull();
+        ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->relativeFile)->toBe('tests/Fixtures/Diagnostics/PassingDiagnostic.php')
+        ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->application)->toBeTrue()
+        ->and(DiagnosticSource::resolve(ApplicationKeyIsSet::class)->application)->toBeFalse()
+        ->and((new PassingDiagnostic)->source())->toBe('laravel/doctor')
+        ->and((new PassingDiagnostic)->package())->toBe('laravel/doctor')
+        ->and((new PassingDiagnostic)->application())->toBeTrue();
 });
 
 it('runs registered diagnostics', function (): void {

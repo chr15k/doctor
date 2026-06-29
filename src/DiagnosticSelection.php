@@ -122,17 +122,8 @@ class DiagnosticSelection
      */
     protected function packages(Diagnostic $diagnostic): array
     {
-        $packages = [];
         $package = $diagnostic->package();
 
-        if ($package !== null) {
-            $packages[] = $package;
-        }
-
-        if (str_starts_with($diagnostic::class, 'Laravel\\Doctor\\Diagnostics\\')) {
-            $packages[] = 'laravel/doctor';
-        }
-
-        return array_values(array_unique($packages));
+        return $package !== null ? [$package] : [];
     }
 }

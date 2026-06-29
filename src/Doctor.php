@@ -189,7 +189,7 @@ class Doctor
                 continue;
             }
 
-            if ($diagnostic->package() === null) {
+            if ($diagnostic->application()) {
                 $application[] = $diagnostic;
             } else {
                 $packages[] = $diagnostic;

@@ -2,6 +2,7 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
+use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
@@ -27,7 +28,7 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
             'uncached-local' => Outcome::pass('Laravel bootstrap files are not cached.'),
             'cached-production' => Outcome::pass('Laravel bootstrap files are cached.'),
             'cached-local' => Outcome::notice(
-                summary: '{files} {verb} cached.',
+                summary: 'Cached bootstrap {files} detected: {cached}.',
                 remediation: 'If recent changes are not appearing, run `php artisan optimize:clear`.',
             ),
         ];
@@ -53,8 +54,8 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
         }
 
         return $this->result('cached-local', [
-            'files' => ucfirst($this->formatCachedFiles($cached)),
-            'verb' => count($cached) === 1 ? 'is' : 'are',
+            'files' => Str::plural('file', count($cached)),
+            'cached' => $this->formatCachedFiles($cached),
         ]);
     }
 
@@ -102,16 +103,6 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
      */
     private function formatCachedFiles(array $cached): string
     {
-        if (count($cached) === 1) {
-            return $cached[0];
-        }
-
-        if (count($cached) === 2) {
-            return implode(' and ', $cached);
-        }
-
-        $last = array_pop($cached);
-
-        return implode(', ', $cached).', and '.$last;
+        return collect($cached)->join(', ', ' and ');
     }
 }

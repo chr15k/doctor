@@ -51,8 +51,9 @@ it('filters diagnostics by wildcard package selectors', function (): void {
 
     $report = $doctor->run(DiagnosticSelection::make(only: ['laravel/*']));
 
-    expect($report->diagnostics())->toHaveCount(1)
-        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(LaravelPackageDiagnostic::class);
+    expect($report->diagnostics())->toHaveCount(2)
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class)
+        ->and($report->diagnostics()[1]->diagnostic::class)->toBe(LaravelPackageDiagnostic::class);
 });
 
 it('filters bundled doctor diagnostics by package selector', function (): void {

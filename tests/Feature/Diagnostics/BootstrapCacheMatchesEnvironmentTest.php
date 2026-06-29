@@ -56,7 +56,25 @@ it('notices when bootstrap files are cached locally', function (): void {
     $result = (new BootstrapCacheMatchesEnvironment)->check();
 
     expect($result->status->value)->toBe('notice')
-        ->and($result->summary)->toBe('Config, events, routes, and views are cached.')
+        ->and($result->summary)->toBe('Cached bootstrap files detected: config, events, routes and views.')
+        ->and($result->details)->toBeNull()
+        ->and($result->remediation)->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.');
+});
+
+it('notices when one bootstrap file is cached locally', function (): void {
+    $basePath = doctor_cached_bootstrap_base_path();
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    config(['app.env' => 'local']);
+    config(['view.compiled' => $basePath.'/storage/framework/views']);
+
+    file_put_contents($this->app->getCachedConfigPath(), '<?php return [];');
+
+    $result = (new BootstrapCacheMatchesEnvironment)->check();
+
+    expect($result->status->value)->toBe('notice')
+        ->and($result->summary)->toBe('Cached bootstrap file detected: config.')
         ->and($result->details)->toBeNull()
         ->and($result->remediation)->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.');
 });

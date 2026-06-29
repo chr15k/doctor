@@ -33,6 +33,7 @@ use Laravel\Doctor\Diagnostics\StorageIsWritable;
 use Laravel\Doctor\DoctorServiceProvider;
 use Laravel\Doctor\Facades\Doctor;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -59,9 +60,27 @@ it('does not repeat diagnostics that were fixed', function (): void {
     $this->app->useEnvironmentPath($environmentPath);
 
     $this->artisan('doctor --only=ApplicationKeyIsSet --fix')
-        ->expectsOutputToContain('[pass] fix Application key is set (doctor): The application key was generated.')
-        ->doesntExpectOutputToContain('[fail] Application key is set (doctor): Laravel does not have an application key.')
+        ->expectsOutputToContain('[pass] fix Application key is set (laravel/doctor): The application key was generated.')
+        ->doesntExpectOutputToContain('[fail] Application key is set (laravel/doctor): Laravel does not have an application key.')
         ->assertExitCode(0);
+});
+
+it('renders issue callout sources with package footer', function (): void {
+    config(['app.key' => '']);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'ApplicationKeyIsSet',
+        '--fail-on' => 'fail',
+    ], $output);
+
+    expect($output->fetch())
+        ->toContain('Laravel does not have an application key.')
+        ->toContain('laravel/doctor')
+        ->not->toContain('File:')
+        ->not->toContain('ApplicationKeyIsSet.php')
+        ->not->toContain('laravel/doctor ApplicationKeyIsSet.php');
 });
 
 it('renders notice diagnostics without diagnostic source noise', function (): void {
@@ -84,11 +103,93 @@ it('renders notice diagnostics without diagnostic source noise', function (): vo
 
     expect($output->fetch())
         ->toContain('Notice')
-        ->toContain('Events and views are cached.')
+        ->toContain('Cached bootstrap files detected: events and views.')
         ->toContain('optimize:clear')
+        ->not->toContain('Suggested fix')
         ->not->toContain('Notes:')
         ->not->toContain('[notice]')
-        ->not->toContain('Bootstrap cache matches environment (doctor)')
+        ->not->toContain('Bootstrap cache matches environment (laravel/doctor)')
+        ->and($exitCode)->toBe(0);
+});
+
+it('renders multiple notice diagnostics in a single callout', function (): void {
+    $basePath = sys_get_temp_dir().'/laravel-doctor-notices-output-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($basePath.'/bootstrap/cache', 0775, true);
+    mkdir($basePath.'/storage/framework/views', 0775, true);
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    config([
+        'app.env' => 'local',
+        'queue.default' => 'database',
+        'view.compiled' => $basePath.'/storage/framework/views',
+    ]);
+
+    file_put_contents($this->app->getCachedEventsPath(), '<?php return [];');
+    file_put_contents($basePath.'/storage/framework/views/example.php', '<?php echo "cached";');
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => [
+            'BootstrapCacheMatchesEnvironment',
+            'AsynchronousQueueIsConfigured',
+        ],
+    ], $output);
+
+    $contents = $output->fetch();
+
+    expect($contents)
+        ->toContain('Notices')
+        ->toContain('Cached bootstrap files detected: events and views.')
+        ->toContain('Queued jobs are processed asynchronously.')
+        ->toContain('laravel/doctor')
+        ->toContain('optimize:clear')
+        ->toContain('queue:work')
+        ->not->toContain('Suggested fix')
+        ->and(substr_count($contents, 'Notice'))->toBe(1)
+        ->and($exitCode)->toBe(0);
+});
+
+it('groups notice diagnostics by package source', function (): void {
+    Doctor::diagnostic(PackagedNoticeDiagnostic::class);
+
+    $basePath = sys_get_temp_dir().'/laravel-doctor-notice-packages-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($basePath.'/bootstrap/cache', 0775, true);
+    mkdir($basePath.'/storage/framework/views', 0775, true);
+
+    $this->app->setBasePath($basePath);
+    $this->app->useStoragePath($basePath.'/storage');
+    config([
+        'app.env' => 'local',
+        'queue.default' => 'database',
+        'view.compiled' => $basePath.'/storage/framework/views',
+    ]);
+
+    file_put_contents($this->app->getCachedEventsPath(), '<?php return [];');
+    file_put_contents($basePath.'/storage/framework/views/example.php', '<?php echo "cached";');
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => [
+            'BootstrapCacheMatchesEnvironment',
+            'AsynchronousQueueIsConfigured',
+            'PackagedNoticeDiagnostic',
+        ],
+    ], $output);
+
+    $contents = $output->fetch();
+
+    expect($contents)
+        ->toContain('Cached bootstrap files detected: events and views.')
+        ->toContain('Queued jobs are processed asynchronously.')
+        ->toContain('The packaged diagnostic noticed.')
+        ->toContain('laravel/doctor')
+        ->toContain('vendor/package')
+        ->and(substr_count($contents, 'Notice'))->toBe(2)
         ->and($exitCode)->toBe(0);
 });
 
@@ -113,17 +214,39 @@ it('renders diagnostic links in cli output', function (): void {
 it('renders diagnostic links in json output', function (): void {
     Doctor::diagnostic(LinkedDiagnostic::class);
 
-    $this->artisan('doctor --only=LinkedDiagnostic --format=json')
-        ->expectsOutputToContain('"links":{"Laravel Docs":"https:\/\/laravel.com\/docs"}')
-        ->assertExitCode(0);
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'LinkedDiagnostic',
+        '--format' => 'json',
+    ], $output);
+
+    $payload = json_decode($output->fetch(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['diagnostics'][0]['source'])->toBe([
+        'label' => 'laravel/doctor',
+        'package' => 'laravel/doctor',
+        'file' => 'tests/Fixtures/Diagnostics/LinkedDiagnostic.php',
+        'application' => true,
+    ])
+        ->and($payload['diagnostics'][0]['links'])->toBe(['Laravel Docs' => 'https://laravel.com/docs'])
+        ->and($exitCode)->toBe(0);
 });
 
 it('renders diagnostic links in github output', function (): void {
     Doctor::diagnostic(LinkedDiagnostic::class);
 
-    $this->artisan('doctor --only=LinkedDiagnostic --format=github')
-        ->expectsOutputToContain('Laravel Docs%3A https%3A//laravel.com/docs')
-        ->assertExitCode(0);
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'LinkedDiagnostic',
+        '--format' => 'github',
+    ], $output);
+
+    expect($output->fetch())
+        ->toContain('title=Testing diagnostic has links (laravel/doctor)')
+        ->toContain('Laravel Docs%3A https%3A//laravel.com/docs')
+        ->and($exitCode)->toBe(0);
 });
 
 it('rejects fixes with json output', function (): void {
