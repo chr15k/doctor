@@ -2,11 +2,11 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
+use Illuminate\Database\Connectors\ConnectionFactory;
 use Illuminate\Support\ConfigurationUrlParser;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
-use Laravel\Doctor\Support\BoundedConnectionFactory;
 use PDO;
 use Throwable;
 
@@ -76,7 +76,7 @@ class DatabaseConnectionIsAvailable extends Diagnostic
      */
     private function probe(string $connection, array $configuration): void
     {
-        $database = (new BoundedConnectionFactory(app()))->make(
+        $database = (new ConnectionFactory(app()))->make(
             $this->withConnectionTimeout($configuration),
             $connection,
         );
@@ -133,10 +133,6 @@ class DatabaseConnectionIsAvailable extends Diagnostic
         $options[PDO::ATTR_TIMEOUT] ??= self::CONNECTION_TIMEOUT_SECONDS;
 
         $configuration['options'] = $options;
-
-        if (($configuration['driver'] ?? null) === 'pgsql' && ! array_key_exists('connect_timeout', $configuration)) {
-            $configuration['connect_timeout'] = self::CONNECTION_TIMEOUT_SECONDS;
-        }
 
         if (($configuration['driver'] ?? null) === 'sqlsrv' && ! array_key_exists('login_timeout', $configuration)) {
             $configuration['login_timeout'] = self::CONNECTION_TIMEOUT_SECONDS;

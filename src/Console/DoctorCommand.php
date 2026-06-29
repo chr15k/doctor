@@ -619,8 +619,8 @@ class DoctorCommand extends Command
             $this->line(sprintf(
                 '::%s title=%s::%s',
                 $level,
-                $this->escapeGithubCommand($this->githubTitle($outcome)),
-                $this->escapeGithubCommand($this->githubSummary($outcome)),
+                $this->escapeGithubCommandProperty($this->githubTitle($outcome)),
+                $this->escapeGithubCommandData($this->githubSummary($outcome)),
             ));
         }
     }
@@ -689,13 +689,25 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Escape a value for a GitHub workflow command.
+     * Escape a GitHub workflow command property value.
      */
-    protected function escapeGithubCommand(string $value): string
+    protected function escapeGithubCommandProperty(string $value): string
     {
         return str_replace(
             ['%', "\r", "\n", ':', ','],
             ['%25', '%0D', '%0A', '%3A', '%2C'],
+            $value,
+        );
+    }
+
+    /**
+     * Escape a GitHub workflow command message body.
+     */
+    protected function escapeGithubCommandData(string $value): string
+    {
+        return str_replace(
+            ['%', "\r", "\n"],
+            ['%25', '%0D', '%0A'],
             $value,
         );
     }

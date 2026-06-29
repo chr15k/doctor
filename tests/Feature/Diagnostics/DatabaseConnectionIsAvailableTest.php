@@ -23,7 +23,7 @@ it('checks the default database connection', function (): void {
         ->and($result->summary)->toBe('Laravel can connect to the default database connection.');
 });
 
-it('adds a bounded timeout to postgres probes', function (): void {
+it('adds a bounded PDO timeout to transient probes', function (): void {
     $probe = new stdClass;
     $probe->configuration = null;
 
@@ -64,6 +64,6 @@ it('adds a bounded timeout to postgres probes', function (): void {
 
     expect($result->status->value)->toBe('pass')
         ->and($probe->configuration)->toBeArray()
-        ->and($probe->configuration['connect_timeout'])->toBe(2)
+        ->and($probe->configuration)->not->toHaveKey('connect_timeout')
         ->and($probe->configuration['options'][PDO::ATTR_TIMEOUT])->toBe(2);
 });

@@ -89,9 +89,9 @@ Doctor ships with a focused suite of diagnostics that cover common configuration
 
 - **Environment** — `.env` presence, `APP_KEY`, PHP version, required and recommended PHP extensions, and timezone.
 - **Composer** — `vendor/autoload.php` exists, Composer can dump optimized autoload files, and `composer.lock` is present and fresh.
-- **Configuration** — configuration files can be loaded and cached, required environment variables exist, and bootstrap cache files are reported when their presence does not match the current environment.
+- **Configuration** — configuration files can be loaded and cached, required environment variables referenced by Laravel's default configuration files exist, and bootstrap cache files are reported when their presence does not match the current environment.
 - **Database** — configured connections are reachable, the default connection timezone is compared with Laravel's timezone, the SQLite database file exists when needed, and pending migrations are reported.
-- **Cache, queue, scheduler, and session** — configured drivers are reachable, Redis connections are checked, `sync` queues are flagged outside local environments, and registered scheduled tasks are surfaced as a notice.
+- **Cache, queue, scheduler, and session** — configured drivers are reachable, active Redis connections are checked, `sync` queues are flagged outside local environments, and registered scheduled tasks are surfaced as a notice.
 - **Storage** — configured disks are reachable, required directories are writable, and the `storage:link` symlink exists when expected.
 - **Security** — debug mode matches the environment, `.env` is ignored, and Composer dependencies are audited.
 

@@ -11,11 +11,11 @@ use Laravel\Doctor\Diagnostics\ComposerAutoloadIsValid;
 use Laravel\Doctor\Diagnostics\ComposerDependenciesAreAudited;
 use Laravel\Doctor\Diagnostics\ComposerLockIsFresh;
 use Laravel\Doctor\Diagnostics\ConfigurationCanBeCached;
-use Laravel\Doctor\Diagnostics\ConfigurationEnvironmentVariablesExist;
 use Laravel\Doctor\Diagnostics\ConfigurationFilesLoad;
 use Laravel\Doctor\Diagnostics\DatabaseConnectionIsAvailable;
 use Laravel\Doctor\Diagnostics\DatabaseTimezoneMatchesApplication;
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
+use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesExist;
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Diagnostics\EnvironmentFileIsIgnored;
 use Laravel\Doctor\Diagnostics\FilesystemDisksAreReachable;
@@ -246,7 +246,7 @@ it('renders diagnostic links in github output', function (): void {
 
     expect($output->fetch())
         ->toContain('title=Testing diagnostic has links (laravel/doctor)')
-        ->toContain('Laravel Docs%3A https%3A//laravel.com/docs')
+        ->toContain('Laravel Docs: https://laravel.com/docs')
         ->and($exitCode)->toBe(0);
 });
 
@@ -288,7 +288,7 @@ it('binds the doctor service and facade', function (): void {
             ComposerLockIsFresh::class,
             ConfigurationFilesLoad::class,
             ConfigurationCanBeCached::class,
-            ConfigurationEnvironmentVariablesExist::class,
+            DefaultConfigurationEnvironmentVariablesExist::class,
             BootstrapCacheMatchesEnvironment::class,
             DatabaseConnectionIsAvailable::class,
             DatabaseTimezoneMatchesApplication::class,
@@ -323,7 +323,7 @@ it('registers the default diagnostics', function (): void {
             ComposerLockIsFresh::class,
             ConfigurationFilesLoad::class,
             ConfigurationCanBeCached::class,
-            ConfigurationEnvironmentVariablesExist::class,
+            DefaultConfigurationEnvironmentVariablesExist::class,
             BootstrapCacheMatchesEnvironment::class,
             DatabaseConnectionIsAvailable::class,
             DatabaseTimezoneMatchesApplication::class,

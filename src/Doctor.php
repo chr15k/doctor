@@ -40,7 +40,7 @@ class Doctor
     /**
      * Register a diagnostic.
      *
-     * @param  class-string<Diagnostic>  $diagnostic
+     * @param  class-string  $diagnostic
      */
     public function diagnostic(string $diagnostic): self
     {
@@ -56,7 +56,7 @@ class Doctor
     /**
      * Register multiple diagnostics.
      *
-     * @param  iterable<class-string<Diagnostic>>  $diagnostics
+     * @param  iterable<class-string>  $diagnostics
      */
     public function diagnostics(iterable $diagnostics): self
     {

@@ -10,7 +10,7 @@ use Throwable;
 
 class RedisConnectionsAreReachable extends Diagnostic
 {
-    public string $name = 'Redis connections are reachable';
+    public string $name = 'Active Redis connections are reachable';
 
     public string $group = 'cache';
 
@@ -22,12 +22,12 @@ class RedisConnectionsAreReachable extends Diagnostic
     protected function outcomes(): array
     {
         return [
-            'not-configured' => Outcome::skip('Laravel does not have Redis connections configured.'),
+            'not-configured' => Outcome::skip('Laravel is not using Redis-backed cache, queue, or session storage.'),
             'unreachable' => Outcome::fail(
-                summary: 'Laravel cannot reach every Redis connection.',
+                summary: 'Laravel cannot reach every active Redis connection.',
                 remediation: 'Check Redis host, port, credentials, and client configuration.',
             ),
-            'reachable' => Outcome::pass('Laravel can reach every Redis connection.'),
+            'reachable' => Outcome::pass('Laravel can reach every active Redis connection.'),
         ];
     }
 
@@ -61,23 +61,77 @@ class RedisConnectionsAreReachable extends Diagnostic
     }
 
     /**
-     * Get configured Redis connection names.
+     * Get Redis connection names used by selected Laravel services.
      *
      * @return list<string>
      */
     private function connections(): array
     {
-        $redis = config('database.redis');
+        return array_values(array_unique(array_filter([
+            $this->cacheConnection(),
+            $this->queueConnection(),
+            $this->sessionConnection(),
+        ], is_string(...))));
+    }
 
-        if (! is_array($redis)) {
-            return [];
+    /**
+     * Get the Redis connection used by the default cache store.
+     */
+    private function cacheConnection(): ?string
+    {
+        $store = config('cache.default');
+
+        if (! is_string($store) || $store === '') {
+            return null;
         }
 
-        return array_values(array_filter(
-            array_keys($redis),
-            static fn (mixed $connection): bool => is_string($connection)
-                && ! in_array($connection, ['client', 'options', 'clusters'], true),
-        ));
+        $configuration = config("cache.stores.{$store}");
+
+        if (! is_array($configuration) || ($configuration['driver'] ?? null) !== 'redis') {
+            return null;
+        }
+
+        return $this->configuredConnection($configuration['connection'] ?? null);
+    }
+
+    /**
+     * Get the Redis connection used by the default queue connection.
+     */
+    private function queueConnection(): ?string
+    {
+        $connection = config('queue.default');
+
+        if (! is_string($connection) || $connection === '') {
+            return null;
+        }
+
+        $configuration = config("queue.connections.{$connection}");
+
+        if (! is_array($configuration) || ($configuration['driver'] ?? null) !== 'redis') {
+            return null;
+        }
+
+        return $this->configuredConnection($configuration['connection'] ?? null);
+    }
+
+    /**
+     * Get the Redis connection used by the configured session driver.
+     */
+    private function sessionConnection(): ?string
+    {
+        if (config('session.driver') !== 'redis') {
+            return null;
+        }
+
+        return $this->configuredConnection(config('session.connection'));
+    }
+
+    /**
+     * Normalize a Redis connection name from configuration.
+     */
+    private function configuredConnection(mixed $connection): string
+    {
+        return is_string($connection) && $connection !== '' ? $connection : 'default';
     }
 
     /**

@@ -8,7 +8,7 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\EnvironmentVariables;
 
-class ConfigurationEnvironmentVariablesExist extends Diagnostic
+class DefaultConfigurationEnvironmentVariablesExist extends Diagnostic
 {
     private const DEFAULT_CONFIGURATION_VARIABLE_RESOLVERS = [
         'app.php' => 'appConfigurationVariables',
@@ -28,7 +28,7 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
         'view.php' => 'viewConfigurationVariables',
     ];
 
-    public string $name = 'Configuration environment variables exist';
+    public string $name = 'Default configuration environment variables exist';
 
     public string $group = 'configuration';
 
@@ -40,10 +40,10 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
     protected function outcomes(): array
     {
         return [
-            'defined' => Outcome::pass('Every required configuration environment variable is defined.'),
+            'defined' => Outcome::pass('Every required environment variable referenced by Laravel default configuration files is defined.'),
             'missing' => Outcome::fail(
-                summary: 'Some configuration environment variables are missing.',
-                remediation: 'Define the missing variables in the application environment or add safe defaults to the config files.',
+                summary: 'Some Laravel default configuration environment variables are missing.',
+                remediation: 'Define the missing variables in the application environment or add safe defaults to Laravel default configuration files.',
             ),
         ];
     }
@@ -64,7 +64,7 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
     }
 
     /**
-     * Get missing required environment variables referenced from config files.
+     * Get missing required environment variables referenced from Laravel default config files.
      *
      * @return array<string, list<string>>
      */
@@ -83,7 +83,7 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
     }
 
     /**
-     * Get required environment variables referenced from config files.
+     * Get required environment variables referenced from Laravel default config files.
      *
      * @return array<string, list<string>>
      */
@@ -535,7 +535,7 @@ class ConfigurationEnvironmentVariablesExist extends Diagnostic
     }
 
     /**
-     * Get configuration files.
+     * Get Laravel default configuration files.
      *
      * @return list<string>
      */

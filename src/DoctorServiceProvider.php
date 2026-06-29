@@ -14,11 +14,11 @@ use Laravel\Doctor\Diagnostics\ComposerAutoloadIsValid;
 use Laravel\Doctor\Diagnostics\ComposerDependenciesAreAudited;
 use Laravel\Doctor\Diagnostics\ComposerLockIsFresh;
 use Laravel\Doctor\Diagnostics\ConfigurationCanBeCached;
-use Laravel\Doctor\Diagnostics\ConfigurationEnvironmentVariablesExist;
 use Laravel\Doctor\Diagnostics\ConfigurationFilesLoad;
 use Laravel\Doctor\Diagnostics\DatabaseConnectionIsAvailable;
 use Laravel\Doctor\Diagnostics\DatabaseTimezoneMatchesApplication;
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
+use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesExist;
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Diagnostics\EnvironmentFileIsIgnored;
 use Laravel\Doctor\Diagnostics\FilesystemDisksAreReachable;
@@ -53,7 +53,7 @@ class DoctorServiceProvider extends ServiceProvider
                 ComposerLockIsFresh::class,
                 ConfigurationFilesLoad::class,
                 ConfigurationCanBeCached::class,
-                ConfigurationEnvironmentVariablesExist::class,
+                DefaultConfigurationEnvironmentVariablesExist::class,
                 BootstrapCacheMatchesEnvironment::class,
                 DatabaseConnectionIsAvailable::class,
                 DatabaseTimezoneMatchesApplication::class,
