@@ -8,9 +8,9 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\ComposerJson;
 
-class PhpVersionMatchesComposerRequirement extends Diagnostic
+class PhpVersionSatisfiesComposerRequirement extends Diagnostic
 {
-    public string $name = 'PHP version matches Composer requirement';
+    public string $name = 'PHP satisfies Composer';
 
     public string $group = 'environment';
 

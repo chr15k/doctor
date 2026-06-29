@@ -4,29 +4,29 @@ use Illuminate\Contracts\Console\Kernel;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Diagnostics\ApplicationTimezoneIsValid;
-use Laravel\Doctor\Diagnostics\AsynchronousQueueIsConfigured;
 use Laravel\Doctor\Diagnostics\BootstrapCacheMatchesEnvironment;
 use Laravel\Doctor\Diagnostics\CacheStoreIsReachable;
+use Laravel\Doctor\Diagnostics\ComposerAuditPasses;
 use Laravel\Doctor\Diagnostics\ComposerAutoloadIsValid;
-use Laravel\Doctor\Diagnostics\ComposerDependenciesAreAudited;
 use Laravel\Doctor\Diagnostics\ComposerLockIsFresh;
 use Laravel\Doctor\Diagnostics\ConfigurationCanBeCached;
-use Laravel\Doctor\Diagnostics\ConfigurationFilesLoad;
-use Laravel\Doctor\Diagnostics\DatabaseConnectionIsAvailable;
+use Laravel\Doctor\Diagnostics\ConfigurationFilesCanBeLoaded;
+use Laravel\Doctor\Diagnostics\DatabaseConnectionIsReachable;
 use Laravel\Doctor\Diagnostics\DatabaseTimezoneMatchesApplication;
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
-use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesExist;
+use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesAreDefined;
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
-use Laravel\Doctor\Diagnostics\EnvironmentFileIsIgnored;
+use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
 use Laravel\Doctor\Diagnostics\FilesystemDisksAreReachable;
 use Laravel\Doctor\Diagnostics\MigrationsAreUpToDate;
-use Laravel\Doctor\Diagnostics\PhpVersionMatchesComposerRequirement;
+use Laravel\Doctor\Diagnostics\PhpVersionSatisfiesComposerRequirement;
 use Laravel\Doctor\Diagnostics\PublicStorageLinkExists;
+use Laravel\Doctor\Diagnostics\QueueConnectionIsAsynchronous;
 use Laravel\Doctor\Diagnostics\QueueConnectionIsReachable;
-use Laravel\Doctor\Diagnostics\RecommendedPhpExtensionsAreInstalled;
+use Laravel\Doctor\Diagnostics\RecommendedPhpExtensionsAreLoaded;
 use Laravel\Doctor\Diagnostics\RedisConnectionsAreReachable;
-use Laravel\Doctor\Diagnostics\RequiredPhpExtensionsAreInstalled;
-use Laravel\Doctor\Diagnostics\ScheduledTasksNeedScheduler;
+use Laravel\Doctor\Diagnostics\RequiredPhpExtensionsAreLoaded;
+use Laravel\Doctor\Diagnostics\ScheduledTasksRequireScheduler;
 use Laravel\Doctor\Diagnostics\SessionDriverIsReachable;
 use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
@@ -76,7 +76,7 @@ it('does not repeat diagnostics that were fixed', function (): void {
     expect(file_get_contents($environmentPath.'/.env'))
         ->toContain('APP_KEY=base64:')
         ->and($contents)->toContain('Re-running diagnostics after applying fixes...')
-        ->and($contents)->toContain('Application key is set: The application key was generated.')
+        ->and($contents)->toContain('Has application key: The application key was generated.')
         ->and($contents)->toContain('All diagnostics passed or were fixed.')
         ->and($exitCode)->toBe(0);
 });
@@ -206,7 +206,7 @@ it('renders multiple notice diagnostics in a single callout', function (): void 
     $exitCode = $this->app->make(Kernel::class)->call('doctor', [
         '--only' => [
             'BootstrapCacheMatchesEnvironment',
-            'AsynchronousQueueIsConfigured',
+            'QueueConnectionIsAsynchronous',
         ],
     ], $output);
 
@@ -248,7 +248,7 @@ it('groups notice diagnostics by package source', function (): void {
     $exitCode = $this->app->make(Kernel::class)->call('doctor', [
         '--only' => [
             'BootstrapCacheMatchesEnvironment',
-            'AsynchronousQueueIsConfigured',
+            'QueueConnectionIsAsynchronous',
             'PackagedNoticeDiagnostic',
         ],
     ], $output);
@@ -351,32 +351,32 @@ it('binds the doctor service and facade', function (): void {
         ->toBe([
             EnvironmentFileExists::class,
             ApplicationKeyIsSet::class,
-            PhpVersionMatchesComposerRequirement::class,
-            RequiredPhpExtensionsAreInstalled::class,
-            RecommendedPhpExtensionsAreInstalled::class,
+            PhpVersionSatisfiesComposerRequirement::class,
+            RequiredPhpExtensionsAreLoaded::class,
+            RecommendedPhpExtensionsAreLoaded::class,
             ApplicationTimezoneIsValid::class,
             ComposerAutoloadIsValid::class,
             ComposerLockIsFresh::class,
-            ConfigurationFilesLoad::class,
+            ConfigurationFilesCanBeLoaded::class,
             ConfigurationCanBeCached::class,
-            DefaultConfigurationEnvironmentVariablesExist::class,
+            DefaultConfigurationEnvironmentVariablesAreDefined::class,
             BootstrapCacheMatchesEnvironment::class,
-            DatabaseConnectionIsAvailable::class,
+            DatabaseConnectionIsReachable::class,
             DatabaseTimezoneMatchesApplication::class,
             SqliteDatabaseExists::class,
             MigrationsAreUpToDate::class,
             CacheStoreIsReachable::class,
             RedisConnectionsAreReachable::class,
             QueueConnectionIsReachable::class,
-            AsynchronousQueueIsConfigured::class,
+            QueueConnectionIsAsynchronous::class,
             SessionDriverIsReachable::class,
-            ScheduledTasksNeedScheduler::class,
+            ScheduledTasksRequireScheduler::class,
             PublicStorageLinkExists::class,
             FilesystemDisksAreReachable::class,
             StorageIsWritable::class,
             DebugModeMatchesEnvironment::class,
-            EnvironmentFileIsIgnored::class,
-            ComposerDependenciesAreAudited::class,
+            EnvironmentFileIsGitIgnored::class,
+            ComposerAuditPasses::class,
             PassingDiagnostic::class,
         ]);
 });
@@ -386,31 +386,31 @@ it('registers the default diagnostics', function (): void {
         ->toBe([
             EnvironmentFileExists::class,
             ApplicationKeyIsSet::class,
-            PhpVersionMatchesComposerRequirement::class,
-            RequiredPhpExtensionsAreInstalled::class,
-            RecommendedPhpExtensionsAreInstalled::class,
+            PhpVersionSatisfiesComposerRequirement::class,
+            RequiredPhpExtensionsAreLoaded::class,
+            RecommendedPhpExtensionsAreLoaded::class,
             ApplicationTimezoneIsValid::class,
             ComposerAutoloadIsValid::class,
             ComposerLockIsFresh::class,
-            ConfigurationFilesLoad::class,
+            ConfigurationFilesCanBeLoaded::class,
             ConfigurationCanBeCached::class,
-            DefaultConfigurationEnvironmentVariablesExist::class,
+            DefaultConfigurationEnvironmentVariablesAreDefined::class,
             BootstrapCacheMatchesEnvironment::class,
-            DatabaseConnectionIsAvailable::class,
+            DatabaseConnectionIsReachable::class,
             DatabaseTimezoneMatchesApplication::class,
             SqliteDatabaseExists::class,
             MigrationsAreUpToDate::class,
             CacheStoreIsReachable::class,
             RedisConnectionsAreReachable::class,
             QueueConnectionIsReachable::class,
-            AsynchronousQueueIsConfigured::class,
+            QueueConnectionIsAsynchronous::class,
             SessionDriverIsReachable::class,
-            ScheduledTasksNeedScheduler::class,
+            ScheduledTasksRequireScheduler::class,
             PublicStorageLinkExists::class,
             FilesystemDisksAreReachable::class,
             StorageIsWritable::class,
             DebugModeMatchesEnvironment::class,
-            EnvironmentFileIsIgnored::class,
-            ComposerDependenciesAreAudited::class,
+            EnvironmentFileIsGitIgnored::class,
+            ComposerAuditPasses::class,
         ]);
 });

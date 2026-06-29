@@ -8,7 +8,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class ApplicationTimezoneIsValid extends Diagnostic
 {
-    public string $name = 'Application timezone is valid';
+    public string $name = 'Has valid timezone';
 
     public string $group = 'environment';
 

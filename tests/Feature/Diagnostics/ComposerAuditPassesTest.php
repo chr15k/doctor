@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Process;
-use Laravel\Doctor\Diagnostics\ComposerDependenciesAreAudited;
+use Laravel\Doctor\Diagnostics\ComposerAuditPasses;
 
 function doctor_composer_audit_base_path(): string
 {
@@ -29,9 +29,9 @@ it('reports Composer audit advisories', function (): void {
         ], JSON_THROW_ON_ERROR), exitCode: 1),
     ]);
 
-    $result = (new ComposerDependenciesAreAudited)->check();
+    $result = (new ComposerAuditPasses)->check();
 
     expect($result->status->value)->toBe('fail')
-        ->and($result->code)->toBe('composer-dependencies-are-audited.vulnerable')
+        ->and($result->code)->toBe('composer-audit-passes.vulnerable')
         ->and($result->details)->toContain('1 security advisory');
 });

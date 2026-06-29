@@ -14,7 +14,7 @@ use Throwable;
 
 class SessionDriverIsReachable extends Diagnostic
 {
-    public string $name = 'Session driver is reachable';
+    public string $name = 'Session connects';
 
     public string $group = 'session';
 

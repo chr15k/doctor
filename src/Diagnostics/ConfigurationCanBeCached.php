@@ -13,7 +13,7 @@ use Throwable;
 
 class ConfigurationCanBeCached extends Diagnostic
 {
-    public string $name = 'Configuration can be cached';
+    public string $name = 'Config can be cached';
 
     public string $group = 'configuration';
 

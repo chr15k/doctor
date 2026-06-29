@@ -10,7 +10,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class EnvironmentFileExists extends Diagnostic implements Fixable
 {
-    public string $name = 'Environment file exists';
+    public string $name = 'Has .env file';
 
     public string $group = 'environment';
 

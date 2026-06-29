@@ -6,9 +6,9 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 
-class AsynchronousQueueIsConfigured extends Diagnostic
+class QueueConnectionIsAsynchronous extends Diagnostic
 {
-    public string $name = 'Asynchronous queue is configured';
+    public string $name = 'Queue runs asynchronously';
 
     public string $group = 'queue';
 

@@ -7,9 +7,9 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 
-class EnvironmentFileIsIgnored extends Diagnostic
+class EnvironmentFileIsGitIgnored extends Diagnostic
 {
-    public string $name = 'Environment file is ignored';
+    public string $name = '.env is gitignored';
 
     public string $group = 'security';
 

@@ -10,7 +10,7 @@ use Throwable;
 
 class RedisConnectionsAreReachable extends Diagnostic
 {
-    public string $name = 'Active Redis connections are reachable';
+    public string $name = 'Redis connects';
 
     public string $group = 'cache';
 

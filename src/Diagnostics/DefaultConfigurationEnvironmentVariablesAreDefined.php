@@ -8,7 +8,7 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\EnvironmentVariables;
 
-class DefaultConfigurationEnvironmentVariablesExist extends Diagnostic
+class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
 {
     private const DEFAULT_CONFIGURATION_VARIABLE_RESOLVERS = [
         'app.php' => 'appConfigurationVariables',
@@ -28,7 +28,7 @@ class DefaultConfigurationEnvironmentVariablesExist extends Diagnostic
         'view.php' => 'viewConfigurationVariables',
     ];
 
-    public string $name = 'Default configuration environment variables exist';
+    public string $name = 'Config env vars are defined';
 
     public string $group = 'configuration';
 

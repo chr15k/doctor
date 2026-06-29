@@ -8,7 +8,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class DebugModeMatchesEnvironment extends Diagnostic
 {
-    public string $name = 'Debug mode matches environment';
+    public string $name = 'Debug matches environment';
 
     public string $group = 'security';
 

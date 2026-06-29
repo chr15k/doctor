@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesExist;
+use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesAreDefined;
 
 function doctor_configuration_environment_base_path(): string
 {
@@ -25,7 +25,7 @@ PHP);
 
     $this->app->setBasePath($basePath);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('DOCTOR_REQUIRED_ENVIRONMENT_VALUE')
@@ -56,7 +56,7 @@ PHP);
 
     $this->app->setBasePath($basePath);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('pass');
 });
@@ -88,7 +88,7 @@ PHP);
     $this->app->setBasePath($basePath);
     config(['database.default' => 'sqlite']);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('pass');
 });
@@ -121,7 +121,7 @@ PHP);
     $this->app->setBasePath($basePath);
     config(['filesystems.default' => 'local']);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('pass');
 });
@@ -159,7 +159,7 @@ PHP);
     $this->app->setBasePath($basePath);
     config(['broadcasting.default' => 'pusher']);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('PUSHER_APP_KEY')
@@ -209,7 +209,7 @@ PHP);
         'logging.channels.single.driver' => 'single',
     ]);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('pass');
 });
@@ -241,7 +241,7 @@ PHP);
         'mail.mailers.postmark.transport' => 'postmark',
     ]);
 
-    $result = (new DefaultConfigurationEnvironmentVariablesExist)->check();
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('POSTMARK_TOKEN')

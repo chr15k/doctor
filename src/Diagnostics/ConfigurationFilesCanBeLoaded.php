@@ -7,9 +7,9 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Throwable;
 
-class ConfigurationFilesLoad extends Diagnostic
+class ConfigurationFilesCanBeLoaded extends Diagnostic
 {
-    public string $name = 'Configuration files load';
+    public string $name = 'Config files load';
 
     public string $group = 'configuration';
 

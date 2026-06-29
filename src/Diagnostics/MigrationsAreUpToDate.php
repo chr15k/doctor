@@ -10,7 +10,7 @@ use Throwable;
 
 class MigrationsAreUpToDate extends Diagnostic
 {
-    public string $name = 'Migrations are up to date';
+    public string $name = 'Migrations are current';
 
     public string $group = 'database';
 

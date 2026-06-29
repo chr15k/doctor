@@ -12,7 +12,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
-    public string $name = 'Application key is set';
+    public string $name = 'Has application key';
 
     public string $group = 'environment';
 

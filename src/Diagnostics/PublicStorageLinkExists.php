@@ -11,7 +11,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class PublicStorageLinkExists extends Diagnostic implements Fixable
 {
-    public string $name = 'Public storage link exists';
+    public string $name = 'Public storage is linked';
 
     public string $group = 'storage';
 

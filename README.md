@@ -116,7 +116,7 @@ use Laravel\Doctor\Results\FixResult;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
-    public string $name = 'Application key is set';
+    public string $name = 'Has application key';
 
     public string $group = 'environment';
 

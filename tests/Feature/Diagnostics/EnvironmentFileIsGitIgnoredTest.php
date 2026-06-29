@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\EnvironmentFileIsIgnored;
+use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
 
 function doctor_environment_ignored_base_path(): string
 {
@@ -18,7 +18,7 @@ it('passes when environment files are gitignored', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new EnvironmentFileIsIgnored)->check();
+    $result = (new EnvironmentFileIsGitIgnored)->check();
 
     expect($result->status->value)->toBe('pass');
 });

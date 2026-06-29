@@ -16,7 +16,7 @@ use Throwable;
  */
 class DatabaseTimezoneMatchesApplication extends Diagnostic
 {
-    public string $name = 'Database timezone matches application';
+    public string $name = 'Database timezone matches app';
 
     public string $group = 'database';
 

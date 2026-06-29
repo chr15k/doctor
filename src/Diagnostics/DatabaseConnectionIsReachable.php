@@ -10,7 +10,7 @@ use Laravel\Doctor\Results\Outcome;
 use PDO;
 use Throwable;
 
-class DatabaseConnectionIsAvailable extends Diagnostic
+class DatabaseConnectionIsReachable extends Diagnostic
 {
     private const CONNECTION_TIMEOUT_SECONDS = 2;
 

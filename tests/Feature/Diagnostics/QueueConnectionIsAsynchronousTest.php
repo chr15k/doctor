@@ -1,11 +1,11 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\AsynchronousQueueIsConfigured;
+use Laravel\Doctor\Diagnostics\QueueConnectionIsAsynchronous;
 
 it('passes when queues run synchronously', function (): void {
     config(['queue.default' => 'sync']);
 
-    $result = (new AsynchronousQueueIsConfigured)->check();
+    $result = (new QueueConnectionIsAsynchronous)->check();
 
     expect($result->status->value)->toBe('pass')
         ->and($result->summary)->toBe('Queued jobs run synchronously.');
@@ -15,7 +15,7 @@ it('warns when queues run synchronously in production', function (): void {
     $this->app->detectEnvironment(fn (): string => 'production');
     config(['queue.default' => 'sync']);
 
-    $result = (new AsynchronousQueueIsConfigured)->check();
+    $result = (new QueueConnectionIsAsynchronous)->check();
 
     expect($result->status->value)->toBe('warn')
         ->and($result->summary)->toBe('Queued jobs run synchronously in production.');
@@ -27,7 +27,7 @@ it('notices when queued jobs are processed asynchronously locally', function ():
         'queue.default' => 'database',
     ]);
 
-    $result = (new AsynchronousQueueIsConfigured)->check();
+    $result = (new QueueConnectionIsAsynchronous)->check();
 
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('Queued jobs are processed asynchronously.')
@@ -38,7 +38,7 @@ it('passes when queued jobs are processed asynchronously outside local environme
     $this->app->detectEnvironment(fn (): string => 'production');
     config(['queue.default' => 'database']);
 
-    $result = (new AsynchronousQueueIsConfigured)->check();
+    $result = (new QueueConnectionIsAsynchronous)->check();
 
     expect($result->status->value)->toBe('pass')
         ->and($result->summary)->toBe('Queued jobs are processed asynchronously.');
@@ -47,7 +47,7 @@ it('passes when queued jobs are processed asynchronously outside local environme
 it('skips when the default queue connection is not configured', function (): void {
     config(['queue.default' => null]);
 
-    $result = (new AsynchronousQueueIsConfigured)->check();
+    $result = (new QueueConnectionIsAsynchronous)->check();
 
     expect($result->status->value)->toBe('skip')
         ->and($result->summary)->toBe('Laravel does not have a default queue connection configured.');

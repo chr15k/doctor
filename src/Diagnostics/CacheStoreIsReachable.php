@@ -10,7 +10,7 @@ use Throwable;
 
 class CacheStoreIsReachable extends Diagnostic
 {
-    public string $name = 'Cache store is reachable';
+    public string $name = 'Cache connects';
 
     public string $group = 'cache';
 

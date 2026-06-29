@@ -8,9 +8,9 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 
-class ScheduledTasksNeedScheduler extends Diagnostic
+class ScheduledTasksRequireScheduler extends Diagnostic
 {
-    public string $name = 'Scheduled tasks need scheduler';
+    public string $name = 'Scheduled tasks require scheduler';
 
     public string $group = 'scheduler';
 

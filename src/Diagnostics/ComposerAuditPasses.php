@@ -9,9 +9,9 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\Details;
 
-class ComposerDependenciesAreAudited extends Diagnostic
+class ComposerAuditPasses extends Diagnostic
 {
-    public string $name = 'Composer dependencies are audited';
+    public string $name = 'Composer audit passes';
 
     public string $group = 'security';
 

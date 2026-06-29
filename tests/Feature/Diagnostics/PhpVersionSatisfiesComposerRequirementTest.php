@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\PhpVersionMatchesComposerRequirement;
+use Laravel\Doctor\Diagnostics\PhpVersionSatisfiesComposerRequirement;
 
 function doctor_php_version_base_path(): string
 {
@@ -21,7 +21,7 @@ it('reports when PHP does not satisfy composer.json', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new PhpVersionMatchesComposerRequirement)->check();
+    $result = (new PhpVersionSatisfiesComposerRequirement)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain(PHP_VERSION)

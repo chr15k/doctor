@@ -11,7 +11,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class ComposerAutoloadIsValid extends Diagnostic implements Fixable
 {
-    public string $name = 'Composer autoload is valid';
+    public string $name = 'Composer autoload works';
 
     public string $group = 'composer';
 

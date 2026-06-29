@@ -10,7 +10,7 @@ use Laravel\Doctor\Support\Details;
 
 class ComposerLockIsFresh extends Diagnostic
 {
-    public string $name = 'Composer lock file is fresh';
+    public string $name = 'composer.lock is fresh';
 
     public string $group = 'composer';
 

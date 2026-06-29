@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\RecommendedPhpExtensionsAreInstalled;
+use Laravel\Doctor\Diagnostics\RecommendedPhpExtensionsAreLoaded;
 
 function doctor_recommended_php_extensions_base_path(): string
 {
@@ -21,7 +21,7 @@ it('warns about missing Composer-suggested PHP extensions', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new RecommendedPhpExtensionsAreInstalled)->check();
+    $result = (new RecommendedPhpExtensionsAreLoaded)->check();
 
     expect($result->status->value)->toBe('warn')
         ->and($result->details)->toContain('ext-laravel_doctor_recommended_extension');

@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\ConfigurationFilesLoad;
+use Laravel\Doctor\Diagnostics\ConfigurationFilesCanBeLoaded;
 
 function doctor_configuration_files_base_path(): string
 {
@@ -18,7 +18,7 @@ it('reports configuration files that cannot load', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new ConfigurationFilesLoad)->check();
+    $result = (new ConfigurationFilesCanBeLoaded)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toBe('broken.php: broken config');

@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Doctor\Diagnostics\RequiredPhpExtensionsAreInstalled;
+use Laravel\Doctor\Diagnostics\RequiredPhpExtensionsAreLoaded;
 
 function doctor_required_php_extensions_base_path(): string
 {
@@ -21,7 +21,7 @@ it('reports missing Composer-required PHP extensions', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new RequiredPhpExtensionsAreInstalled)->check();
+    $result = (new RequiredPhpExtensionsAreLoaded)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('ext-laravel_doctor_missing_extension');

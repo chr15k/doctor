@@ -11,7 +11,7 @@ use Throwable;
 
 class FilesystemDisksAreReachable extends Diagnostic
 {
-    public string $name = 'Filesystem disks are reachable';
+    public string $name = 'Filesystem disks connect';
 
     public string $group = 'storage';
 

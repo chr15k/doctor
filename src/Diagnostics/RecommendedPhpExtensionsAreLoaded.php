@@ -7,9 +7,9 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\ComposerJson;
 
-class RecommendedPhpExtensionsAreInstalled extends Diagnostic
+class RecommendedPhpExtensionsAreLoaded extends Diagnostic
 {
-    public string $name = 'Recommended PHP extensions are installed';
+    public string $name = 'Has recommended PHP extensions';
 
     public string $group = 'environment';
 

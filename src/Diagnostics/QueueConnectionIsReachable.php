@@ -14,7 +14,7 @@ use Throwable;
 
 class QueueConnectionIsReachable extends Diagnostic
 {
-    public string $name = 'Queue connection is reachable';
+    public string $name = 'Queue connects';
 
     public string $group = 'queue';
 

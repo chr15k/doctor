@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Database\Connectors\ConnectorInterface;
-use Laravel\Doctor\Diagnostics\DatabaseConnectionIsAvailable;
+use Laravel\Doctor\Diagnostics\DatabaseConnectionIsReachable;
 
 it('checks the default database connection', function (): void {
     config([
@@ -16,10 +16,10 @@ it('checks the default database connection', function (): void {
         ],
     ]);
 
-    $result = (new DatabaseConnectionIsAvailable)->check();
+    $result = (new DatabaseConnectionIsReachable)->check();
 
     expect($result->status->value)->toBe('pass')
-        ->and($result->code)->toBe('database-connection-is-available.reachable')
+        ->and($result->code)->toBe('database-connection-is-reachable.reachable')
         ->and($result->summary)->toBe('Laravel can connect to the default database connection.');
 });
 
@@ -60,7 +60,7 @@ it('adds a bounded PDO timeout to transient probes', function (): void {
         }
     });
 
-    $result = (new DatabaseConnectionIsAvailable)->check();
+    $result = (new DatabaseConnectionIsReachable)->check();
 
     expect($result->status->value)->toBe('pass')
         ->and($probe->configuration)->toBeArray()
