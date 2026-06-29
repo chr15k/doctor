@@ -33,7 +33,6 @@ use Laravel\Doctor\Diagnostics\ScheduledTasksNeedScheduler;
 use Laravel\Doctor\Diagnostics\SessionDriverIsReachable;
 use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
-use Laravel\Doctor\Diagnostics\VendorAutoloadExists;
 
 class DoctorServiceProvider extends ServiceProvider
 {
@@ -50,7 +49,6 @@ class DoctorServiceProvider extends ServiceProvider
                 RequiredPhpExtensionsAreInstalled::class,
                 RecommendedPhpExtensionsAreInstalled::class,
                 ApplicationTimezoneIsValid::class,
-                VendorAutoloadExists::class,
                 ComposerAutoloadIsValid::class,
                 ComposerLockIsFresh::class,
                 ConfigurationFilesLoad::class,

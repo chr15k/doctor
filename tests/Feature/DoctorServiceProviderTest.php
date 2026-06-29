@@ -30,7 +30,6 @@ use Laravel\Doctor\Diagnostics\ScheduledTasksNeedScheduler;
 use Laravel\Doctor\Diagnostics\SessionDriverIsReachable;
 use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
-use Laravel\Doctor\Diagnostics\VendorAutoloadExists;
 use Laravel\Doctor\DoctorServiceProvider;
 use Laravel\Doctor\Facades\Doctor;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
@@ -161,7 +160,6 @@ it('binds the doctor service and facade', function (): void {
             RequiredPhpExtensionsAreInstalled::class,
             RecommendedPhpExtensionsAreInstalled::class,
             ApplicationTimezoneIsValid::class,
-            VendorAutoloadExists::class,
             ComposerAutoloadIsValid::class,
             ComposerLockIsFresh::class,
             ConfigurationFilesLoad::class,
@@ -197,7 +195,6 @@ it('registers the default diagnostics', function (): void {
             RequiredPhpExtensionsAreInstalled::class,
             RecommendedPhpExtensionsAreInstalled::class,
             ApplicationTimezoneIsValid::class,
-            VendorAutoloadExists::class,
             ComposerAutoloadIsValid::class,
             ComposerLockIsFresh::class,
             ConfigurationFilesLoad::class,
