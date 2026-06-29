@@ -73,6 +73,7 @@ it('renders issue callout sources with package footer', function (): void {
     $this->app->make(Kernel::class)->call('doctor', [
         '--only' => 'ApplicationKeyIsSet',
         '--fail-on' => 'fail',
+        '--no-interaction' => true,
     ], $output);
 
     expect($output->fetch())

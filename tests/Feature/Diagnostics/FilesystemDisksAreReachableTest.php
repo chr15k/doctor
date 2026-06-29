@@ -11,8 +11,33 @@ function doctor_filesystem_disk_root(): string
     return $path;
 }
 
-it('passes when local filesystem disks are reachable', function (): void {
+it('passes when the default local filesystem disk is reachable', function (): void {
     config([
+        'filesystems.default' => 'doctor',
+        'filesystems.disks' => [
+            'doctor' => [
+                'driver' => 'local',
+                'root' => doctor_filesystem_disk_root(),
+            ],
+            's3' => [
+                'driver' => 's3',
+                'key' => 'unused',
+                'secret' => 'unused',
+                'region' => 'us-east-1',
+                'bucket' => 'unused',
+            ],
+        ],
+    ]);
+
+    $result = (new FilesystemDisksAreReachable)->check();
+
+    expect($result->status->value)->toBe('pass')
+        ->and($result->summary)->toBe('Laravel can reach the default filesystem disk.');
+});
+
+it('skips when the default filesystem disk is not configured', function (): void {
+    config([
+        'filesystems.default' => 'missing',
         'filesystems.disks' => [
             'doctor' => [
                 'driver' => 'local',
@@ -23,5 +48,7 @@ it('passes when local filesystem disks are reachable', function (): void {
 
     $result = (new FilesystemDisksAreReachable)->check();
 
-    expect($result->status->value)->toBe('pass');
+    expect($result->status->value)->toBe('skip')
+        ->and($result->summary)->toBe('The default filesystem disk is not configured.')
+        ->and($result->details)->toBe('The [missing] filesystem disk is not configured.');
 });

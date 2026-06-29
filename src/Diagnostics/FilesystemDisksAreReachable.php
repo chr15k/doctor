@@ -23,11 +23,13 @@ class FilesystemDisksAreReachable extends Diagnostic
     protected function outcomes(): array
     {
         return [
+            'not-configured' => Outcome::skip('Laravel does not have a default filesystem disk configured.'),
+            'disk-missing' => Outcome::skip('The default filesystem disk is not configured.'),
             'unreachable' => Outcome::fail(
-                summary: 'Laravel cannot reach every configured filesystem disk.',
+                summary: 'Laravel cannot reach the default filesystem disk.',
                 remediation: 'Check filesystem disk roots, credentials, and network access.',
             ),
-            'reachable' => Outcome::pass('Laravel can reach every configured filesystem disk.'),
+            'reachable' => Outcome::pass('Laravel can reach the default filesystem disk.'),
         ];
     }
 
@@ -36,19 +38,24 @@ class FilesystemDisksAreReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $failures = [];
+        $disk = config('filesystems.default');
 
-        foreach ($this->disks() as $disk => $configuration) {
-            try {
-                $this->probe($disk, $configuration);
-            } catch (Throwable $e) {
-                $failures[$disk] = $e->getMessage();
-            }
+        if (! is_string($disk) || $disk === '') {
+            return $this->result('not-configured');
         }
 
-        if ($failures !== []) {
+        $configuration = $this->configuration($disk);
+
+        if ($configuration === null) {
+            return $this->result('disk-missing')
+                ->withDetails(sprintf('The [%s] filesystem disk is not configured.', $disk));
+        }
+
+        try {
+            $this->probe($disk, $configuration);
+        } catch (Throwable $e) {
             return $this->result('unreachable')
-                ->withDetails($this->formatFailures($failures));
+                ->withDetails($e->getMessage());
         }
 
         return $this->result('reachable');
@@ -89,40 +96,26 @@ class FilesystemDisksAreReachable extends Diagnostic
     }
 
     /**
-     * Get configured filesystem disks.
+     * Get the default filesystem disk configuration.
      *
-     * @return array<string, array<string, mixed>>
+     * @return array<string, mixed>|null
      */
-    private function disks(): array
+    private function configuration(string $disk): ?array
     {
-        $disks = config('filesystems.disks');
+        $configuration = config("filesystems.disks.{$disk}");
 
-        if (! is_array($disks)) {
-            return [];
+        if (! is_array($configuration)) {
+            return null;
         }
 
         $configured = [];
 
-        foreach ($disks as $disk => $configuration) {
-            if (is_string($disk) && is_array($configuration)) {
-                $configured[$disk] = $configuration;
+        foreach ($configuration as $key => $value) {
+            if (is_string($key)) {
+                $configured[$key] = $value;
             }
         }
 
         return $configured;
-    }
-
-    /**
-     * Format disk failures.
-     *
-     * @param  array<string, string>  $failures
-     */
-    private function formatFailures(array $failures): string
-    {
-        return implode(PHP_EOL, array_map(
-            static fn (string $disk, string $message): string => sprintf('- %s: %s', $disk, $message),
-            array_keys($failures),
-            $failures,
-        ));
     }
 }

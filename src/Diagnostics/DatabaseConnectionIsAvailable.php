@@ -2,15 +2,18 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\ConfigurationUrlParser;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
-use Laravel\Doctor\Support\Details;
+use Laravel\Doctor\Support\BoundedConnectionFactory;
+use PDO;
 use Throwable;
 
 class DatabaseConnectionIsAvailable extends Diagnostic
 {
+    private const CONNECTION_TIMEOUT_SECONDS = 2;
+
     public string $name = 'Database connects';
 
     public string $group = 'database';
@@ -23,13 +26,14 @@ class DatabaseConnectionIsAvailable extends Diagnostic
     protected function outcomes(): array
     {
         return [
-            'not-configured' => Outcome::skip('No database connections are configured.'),
+            'not-configured' => Outcome::skip('Laravel does not have a default database connection configured.'),
+            'connection-missing' => Outcome::skip('The default database connection is not configured.'),
             'manager-missing' => Outcome::skip('The database manager is not available.'),
             'unreachable' => Outcome::fail(
-                summary: 'Laravel cannot connect to every configured database.',
+                summary: 'Laravel cannot connect to the default database connection.',
                 remediation: 'Check DB_CONNECTION and the database credentials in your environment file.',
             ),
-            'reachable' => Outcome::pass('Laravel can connect to every configured database.'),
+            'reachable' => Outcome::pass('Laravel can connect to the default database connection.'),
         ];
     }
 
@@ -38,9 +42,9 @@ class DatabaseConnectionIsAvailable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $connections = $this->connections();
+        $connection = config('database.default');
 
-        if ($connections === []) {
+        if (! is_string($connection) || $connection === '') {
             return $this->result('not-configured');
         }
 
@@ -48,42 +52,96 @@ class DatabaseConnectionIsAvailable extends Diagnostic
             return $this->result('manager-missing');
         }
 
-        /** @var DatabaseManager $database */
-        $database = app('db');
-        $failures = [];
+        $configuration = $this->configuration($connection);
 
-        foreach ($connections as $connection) {
-            try {
-                $database->connection($connection)->getPdo();
-            } catch (Throwable $e) {
-                $failures[$connection] = $e->getMessage();
-            }
+        if ($configuration === null) {
+            return $this->result('connection-missing')
+                ->withDetails(sprintf('The [%s] database connection is not configured.', $connection));
         }
 
-        if ($failures !== []) {
+        try {
+            $this->probe($connection, $configuration);
+        } catch (Throwable $e) {
             return $this->result('unreachable')
-                ->withDetails(Details::failures($failures));
+                ->withDetails($e->getMessage());
         }
 
         return $this->result('reachable');
     }
 
     /**
-     * Get configured database connection names.
+     * Probe the database connection.
      *
-     * @return list<string>
+     * @param  array<string, mixed>  $configuration
      */
-    private function connections(): array
+    private function probe(string $connection, array $configuration): void
     {
-        $connections = config('database.connections');
+        $database = (new BoundedConnectionFactory(app()))->make(
+            $this->withConnectionTimeout($configuration),
+            $connection,
+        );
 
-        if (! is_array($connections)) {
-            return [];
+        try {
+            $database->getPdo();
+        } finally {
+            $database->disconnect();
+        }
+    }
+
+    /**
+     * Get the default database connection configuration.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function configuration(string $connection): ?array
+    {
+        $configuration = config("database.connections.{$connection}");
+
+        if (is_string($configuration)) {
+            return (new ConfigurationUrlParser)->parseConfiguration($configuration);
         }
 
-        return array_values(array_filter(
-            array_keys($connections),
-            static fn (mixed $connection): bool => is_string($connection) && $connection !== '',
-        ));
+        if (! is_array($configuration)) {
+            return null;
+        }
+
+        $normalized = [];
+
+        foreach ($configuration as $key => $value) {
+            if (is_string($key)) {
+                $normalized[$key] = $value;
+            }
+        }
+
+        return (new ConfigurationUrlParser)->parseConfiguration($normalized);
+    }
+
+    /**
+     * Add conservative connection timeouts to the transient probe configuration.
+     *
+     * @param  array<string, mixed>  $configuration
+     * @return array<string, mixed>
+     */
+    private function withConnectionTimeout(array $configuration): array
+    {
+        $options = $configuration['options'] ?? [];
+
+        if (! is_array($options)) {
+            $options = [];
+        }
+
+        $options[PDO::ATTR_TIMEOUT] ??= self::CONNECTION_TIMEOUT_SECONDS;
+
+        $configuration['options'] = $options;
+
+        if (($configuration['driver'] ?? null) === 'pgsql' && ! array_key_exists('connect_timeout', $configuration)) {
+            $configuration['connect_timeout'] = self::CONNECTION_TIMEOUT_SECONDS;
+        }
+
+        if (($configuration['driver'] ?? null) === 'sqlsrv' && ! array_key_exists('login_timeout', $configuration)) {
+            $configuration['login_timeout'] = self::CONNECTION_TIMEOUT_SECONDS;
+        }
+
+        return $configuration;
     }
 }
