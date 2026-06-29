@@ -2,7 +2,8 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Encryption\Encrypter;
+use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
@@ -53,13 +54,73 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
      */
     public function fix(DiagnosticResult $result): FixResult
     {
-        $exitCode = Artisan::call('key:generate');
+        $key = $this->generateRandomKey();
 
-        if ($exitCode !== 0) {
+        if (! $this->writeKeyToEnvironmentFile($key)) {
             return $this->fixResult('generation-failed')
-                ->withDetails(trim(Artisan::output()));
+                ->withDetails(sprintf('The application environment file [%s] could not be updated.', $this->environmentFilePath()));
         }
 
+        config(['app.key' => $key]);
+
         return $this->fixResult('generated');
+    }
+
+    private function generateRandomKey(): string
+    {
+        return 'base64:'.base64_encode(
+            Encrypter::generateKey($this->applicationCipher())
+        );
+    }
+
+    private function applicationCipher(): string
+    {
+        $cipher = config('app.cipher');
+
+        if (! is_string($cipher) || $cipher === '') {
+            $cipher = 'AES-256-CBC';
+        }
+
+        return $cipher;
+    }
+
+    private function writeKeyToEnvironmentFile(string $key): bool
+    {
+        $path = $this->environmentFilePath();
+
+        if (! File::isFile($path) || ! is_writable($path)) {
+            return false;
+        }
+
+        $contents = File::get($path);
+        $line = 'APP_KEY='.$key;
+        $updated = $this->replaceExistingKey($contents, $line)
+            ?? $this->appendMissingKey($contents, $line);
+
+        return File::put($path, $updated) !== false;
+    }
+
+    private function replaceExistingKey(string $contents, string $line): ?string
+    {
+        if (preg_match('/^\s*APP_KEY\s*=.*$/m', $contents) !== 1) {
+            return null;
+        }
+
+        $updated = preg_replace('/^\s*APP_KEY\s*=.*$/m', $line, $contents, 1);
+
+        return is_string($updated) ? $updated : null;
+    }
+
+    private function appendMissingKey(string $contents, string $line): string
+    {
+        $newline = str_contains($contents, "\r\n") ? "\r\n" : "\n";
+        $separator = $contents === '' || str_ends_with($contents, "\n") ? '' : $newline;
+
+        return $contents.$separator.$line.$newline;
+    }
+
+    private function environmentFilePath(): string
+    {
+        return app()->environmentFilePath();
     }
 }

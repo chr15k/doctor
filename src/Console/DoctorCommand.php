@@ -8,6 +8,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
+use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
 use Laravel\Doctor\Results\Status;
@@ -115,7 +116,7 @@ class DoctorCommand extends Command
      */
     protected function runCli(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
-        $report = $this->applyFixes($doctor, $this->runForCli($doctor, $selection));
+        $report = $this->applyFixes($doctor, $selection, $this->runForCli($doctor, $selection));
 
         if ($report->diagnostics() === []) {
             if (! $doctor->hasDiagnostics()) {
@@ -290,10 +291,6 @@ class DoctorCommand extends Command
         $notices = [];
 
         foreach ($report->diagnostics() as $outcome) {
-            if ($report->hasPassingFixFor($outcome)) {
-                continue;
-            }
-
             if ($outcome->result->status === Status::Notice) {
                 $notices[] = $outcome;
 
@@ -322,16 +319,7 @@ class DoctorCommand extends Command
         }
 
         $this->renderNotices($notices);
-
-        foreach ($report->fixes() as $outcome) {
-            $this->line(sprintf(
-                '[%s] fix %s (%s): %s',
-                $outcome->result->status->value,
-                $outcome->diagnostic->name,
-                $outcome->diagnostic->source(),
-                $outcome->result->summary,
-            ));
-        }
+        $this->renderFixes($report->fixes());
 
         if ($report->hasFailures()) {
             error('Doctor found failing diagnostics.');
@@ -357,7 +345,7 @@ class DoctorCommand extends Command
     /**
      * Apply accepted diagnostic fixes.
      */
-    protected function applyFixes(Doctor $doctor, DiagnosticReport $report): DiagnosticReport
+    protected function applyFixes(Doctor $doctor, DiagnosticSelection $selection, DiagnosticReport $report): DiagnosticReport
     {
         $fixes = [];
 
@@ -370,23 +358,20 @@ class DoctorCommand extends Command
                 continue;
             }
 
-            if (! (bool) $this->option('fix')) {
-                $this->newLine();
-                $this->line(sprintf(
-                    '%s: %s',
-                    $outcome->diagnostic->name,
-                    $outcome->result->summary,
-                ));
-            }
-
-            if (! $this->shouldApplyFix($this->confirmationPrompt($outcome))) {
+            if (! $this->shouldApplyFix($outcome)) {
                 continue;
             }
 
             $fixes[] = $doctor->fix($outcome);
         }
 
-        return $report->withFixes($fixes);
+        if ($fixes === []) {
+            return $report;
+        }
+
+        info('Re-running diagnostics after applying fixes...');
+
+        return $this->runForCli($doctor, $selection)->withFixes($fixes);
     }
 
     /**
@@ -525,11 +510,101 @@ class DoctorCommand extends Command
     }
 
     /**
+     * Render diagnostic fixes as callouts grouped by source.
+     *
+     * @param  list<DiagnosticFixOutcome>  $fixes
+     */
+    protected function renderFixes(array $fixes): void
+    {
+        if ($fixes === []) {
+            return;
+        }
+
+        foreach ($this->fixesBySource($fixes) as $source => $sourceFixes) {
+            callout(
+                label: Str::plural('Fix', count($sourceFixes)),
+                content: $this->fixesCalloutContent($sourceFixes),
+                type: $this->fixesCalloutType($sourceFixes),
+                info: $source,
+            );
+        }
+    }
+
+    /**
+     * @param  list<DiagnosticFixOutcome>  $fixes
+     * @return array<string, list<DiagnosticFixOutcome>>
+     */
+    protected function fixesBySource(array $fixes): array
+    {
+        $grouped = [];
+
+        foreach ($fixes as $fix) {
+            $grouped[$fix->diagnostic->source()][] = $fix;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Format fix content for a callout.
+     *
+     * @param  list<DiagnosticFixOutcome>  $fixes
+     * @return list<string|ElementContract>
+     */
+    protected function fixesCalloutContent(array $fixes): array
+    {
+        if (count($fixes) === 1) {
+            return [$this->fixItem($fixes[0])];
+        }
+
+        return [Element::bulletedList(array_map(
+            fn (DiagnosticFixOutcome $fix): string => $this->fixItem($fix),
+            $fixes,
+        ), spaced: true)];
+    }
+
+    /**
+     * Format a fix outcome as a compact list item.
+     */
+    protected function fixItem(DiagnosticFixOutcome $outcome): string
+    {
+        $parts = [
+            sprintf('%s: %s', $outcome->diagnostic->name, $outcome->result->summary),
+        ];
+
+        if ($outcome->result->details !== null) {
+            $parts[] = $outcome->result->details;
+        }
+
+        return Str::squish(implode(' ', $parts));
+    }
+
+    /**
+     * @param  list<DiagnosticFixOutcome>  $fixes
+     */
+    protected function fixesCalloutType(array $fixes): ?string
+    {
+        foreach ($fixes as $fix) {
+            if ($fix->result->status->failed()) {
+                return 'error';
+            }
+        }
+
+        foreach ($fixes as $fix) {
+            if ($fix->result->status === Status::Warn) {
+                return 'warning';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Format diagnostic content for a callout.
      *
      * @return list<string|ElementContract>
      */
-    protected function diagnosticCalloutContent(DiagnosticOutcome $outcome): array
+    protected function diagnosticCalloutContent(DiagnosticOutcome $outcome, bool $includeRemediation = true): array
     {
         $content = [$outcome->result->summary];
 
@@ -537,7 +612,7 @@ class DoctorCommand extends Command
             $content[] = $outcome->result->details;
         }
 
-        if ($outcome->result->remediation !== null) {
+        if ($includeRemediation && $outcome->result->remediation !== null) {
             $content[] = Element::heading('Suggested fix');
             $content[] = $outcome->result->remediation;
         }
@@ -560,9 +635,32 @@ class DoctorCommand extends Command
     }
 
     /**
+     * Render a diagnostic fix confirmation as a callout.
+     */
+    protected function renderFixConfirmation(DiagnosticOutcome $outcome): void
+    {
+        callout(
+            label: $outcome->diagnostic->name,
+            content: $this->fixConfirmationCalloutContent($outcome),
+            type: $outcome->result->status === Status::Warn ? 'warning' : 'error',
+            info: $outcome->diagnostic->source(),
+        );
+    }
+
+    /**
+     * Format fix confirmation content for a callout.
+     *
+     * @return list<string|ElementContract>
+     */
+    protected function fixConfirmationCalloutContent(DiagnosticOutcome $outcome): array
+    {
+        return $this->diagnosticCalloutContent($outcome, includeRemediation: false);
+    }
+
+    /**
      * Determine whether a fix should be applied.
      */
-    protected function shouldApplyFix(string $prompt): bool
+    protected function shouldApplyFix(DiagnosticOutcome $outcome): bool
     {
         if ((bool) $this->option('fix')) {
             return true;
@@ -572,7 +670,9 @@ class DoctorCommand extends Command
             return false;
         }
 
-        return confirm($prompt, default: true);
+        $this->renderFixConfirmation($outcome);
+
+        return confirm($this->confirmationPrompt($outcome), default: true);
     }
 
     /**

@@ -53,10 +53,6 @@ class DiagnosticReport
     public function hasFailures(): bool
     {
         foreach ($this->diagnostics as $outcome) {
-            if ($this->hasPassingFixFor($outcome)) {
-                continue;
-            }
-
             if ($outcome->result->status->failed()) {
                 return true;
             }
@@ -77,10 +73,6 @@ class DiagnosticReport
     public function hasWarnings(): bool
     {
         foreach ($this->diagnostics as $outcome) {
-            if ($this->hasPassingFixFor($outcome)) {
-                continue;
-            }
-
             if ($outcome->result->status === Status::Warn || $outcome->result->status->failed()) {
                 return true;
             }
@@ -88,20 +80,6 @@ class DiagnosticReport
 
         foreach ($this->fixes as $outcome) {
             if ($outcome->result->status === Status::Warn || $outcome->result->status->failed()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Determine whether the diagnostic has a passing fix.
-     */
-    public function hasPassingFixFor(DiagnosticOutcome $diagnostic): bool
-    {
-        foreach ($this->fixes as $fix) {
-            if ($fix->diagnostic === $diagnostic->diagnostic && $fix->result->status === Status::Pass) {
                 return true;
             }
         }

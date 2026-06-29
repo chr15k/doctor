@@ -1,11 +1,20 @@
 <?php
 
-use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
+
+function doctor_application_key_environment_path(string $contents): string
+{
+    $environmentPath = sys_get_temp_dir().'/laravel-doctor-application-key-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($environmentPath, 0775, true);
+    file_put_contents($environmentPath.'/.env', $contents);
+
+    return $environmentPath;
+}
 
 it('passes when the application key is set', function (): void {
     config(['app.key' => 'base64:'.str_repeat('a', 44)]);
@@ -35,19 +44,11 @@ it('reports a missing application key', function (): void {
 });
 
 it('generates an application key when fixed', function (): void {
-    $artisan = new class
-    {
-        public array $calls = [];
+    config(['app.key' => '']);
 
-        public function call(string $command): int
-        {
-            $this->calls[] = $command;
+    $environmentPath = doctor_application_key_environment_path("APP_KEY=\n");
 
-            return 0;
-        }
-    };
-
-    Artisan::swap($artisan);
+    $this->app->useEnvironmentPath($environmentPath);
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,
@@ -57,22 +58,33 @@ it('generates an application key when fixed', function (): void {
     expect($fix->result->status->value)->toBe('pass')
         ->and($fix->result->code)->toBe('application-key-is-set.fix.generated')
         ->and($fix->result->summary)->toBe('The application key was generated.')
-        ->and($artisan->calls)->toBe(['key:generate']);
+        ->and(file_get_contents($environmentPath.'/.env'))->toContain('APP_KEY=base64:')
+        ->and(str_starts_with((string) config('app.key'), 'base64:'))->toBeTrue();
 });
 
-it('reports when application key generation fails', function (): void {
-    Artisan::swap(new class
-    {
-        public function call(string $command): int
-        {
-            return 1;
-        }
+it('adds an application key to the environment file when the variable is missing', function (): void {
+    config(['app.key' => '']);
 
-        public function output(): string
-        {
-            return 'Unable to write key.';
-        }
-    });
+    $environmentPath = doctor_application_key_environment_path("APP_NAME=Laravel\n");
+
+    $this->app->useEnvironmentPath($environmentPath);
+
+    $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
+        new ApplicationKeyIsSet,
+        DiagnosticResult::fail('Laravel does not have an application key.'),
+    ));
+
+    expect($fix->result->status->value)->toBe('pass')
+        ->and(file_get_contents($environmentPath.'/.env'))->toContain("APP_NAME=Laravel\nAPP_KEY=base64:")
+        ->and(str_starts_with((string) config('app.key'), 'base64:'))->toBeTrue();
+});
+
+it('reports when the application key cannot be written to the environment file', function (): void {
+    $environmentPath = sys_get_temp_dir().'/laravel-doctor-application-key-missing-env-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($environmentPath, 0775, true);
+
+    $this->app->useEnvironmentPath($environmentPath);
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,
@@ -82,5 +94,5 @@ it('reports when application key generation fails', function (): void {
     expect($fix->result->status->value)->toBe('fail')
         ->and($fix->result->code)->toBe('application-key-is-set.fix.generation-failed')
         ->and($fix->result->summary)->toBe('The application key could not be generated.')
-        ->and($fix->result->details)->toBe('Unable to write key.');
+        ->and($fix->result->details)->toContain('could not be updated');
 });

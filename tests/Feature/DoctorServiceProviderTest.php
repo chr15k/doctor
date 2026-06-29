@@ -32,9 +32,14 @@ use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
 use Laravel\Doctor\DoctorServiceProvider;
 use Laravel\Doctor\Facades\Doctor;
+use Laravel\Doctor\Results\DiagnosticOutcome;
+use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -59,10 +64,71 @@ it('does not repeat diagnostics that were fixed', function (): void {
 
     $this->app->useEnvironmentPath($environmentPath);
 
-    $this->artisan('doctor --only=ApplicationKeyIsSet --fix')
-        ->expectsOutputToContain('[pass] fix Application key is set (laravel/doctor): The application key was generated.')
-        ->doesntExpectOutputToContain('[fail] Application key is set (laravel/doctor): Laravel does not have an application key.')
-        ->assertExitCode(0);
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'ApplicationKeyIsSet',
+        '--fix' => true,
+    ], $output);
+
+    $contents = $output->fetch();
+
+    expect(file_get_contents($environmentPath.'/.env'))
+        ->toContain('APP_KEY=base64:')
+        ->and($contents)->toContain('Re-running diagnostics after applying fixes...')
+        ->and($contents)->toContain('Application key is set: The application key was generated.')
+        ->and($contents)->toContain('All diagnostics passed or were fixed.')
+        ->and($exitCode)->toBe(0);
+});
+
+it('reruns diagnostics after applying fixes', function (): void {
+    Doctor::diagnostic(FixesSharedStateDiagnostic::class);
+    Doctor::diagnostic(SharedStateWasFixedDiagnostic::class);
+
+    config(['doctor-testing.shared-state-fixed' => false]);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'testing',
+        '--fix' => true,
+    ], $output);
+
+    expect($output->fetch())
+        ->toContain('Fix')
+        ->toContain('Re-running diagnostics after applying fixes...')
+        ->toContain('Testing diagnostic fixes shared state')
+        ->toContain('The shared state fix')
+        ->toContain('ran.')
+        ->toContain('All diagnostics passed or were fixed.')
+        ->not->toContain('[pass] fix')
+        ->not->toContain('The shared state is still broken.')
+        ->and($exitCode)->toBe(0);
+});
+
+it('formats interactive fix callouts without remediation or confirmation text', function (): void {
+    $command = new class extends DoctorCommand
+    {
+        public function content(DiagnosticOutcome $outcome): array
+        {
+            return $this->fixConfirmationCalloutContent($outcome);
+        }
+
+        public function prompt(DiagnosticOutcome $outcome): string
+        {
+            return $this->confirmationPrompt($outcome);
+        }
+    };
+
+    $outcome = new DiagnosticOutcome(
+        new FixableDiagnostic,
+        DiagnosticResult::fail('The diagnostic failed.')
+            ->suggest('Apply the testing diagnostic fix.')
+            ->confirmUsing('Fix the testing diagnostic?'),
+    );
+
+    expect($command->content($outcome))->toBe(['The diagnostic failed.'])
+        ->and($command->prompt($outcome))->toBe('Fix the testing diagnostic?');
 });
 
 it('renders issue callout sources with package footer', function (): void {
@@ -78,7 +144,12 @@ it('renders issue callout sources with package footer', function (): void {
 
     expect($output->fetch())
         ->toContain('Laravel does not have an application key.')
+        ->toContain('Suggested fix')
+        ->toContain('Generate an application key with')
+        ->toContain('php artisan key:generate')
         ->toContain('laravel/doctor')
+        ->not->toContain('Confirmation')
+        ->not->toContain('Would you like Doctor to generate an application key')
         ->not->toContain('File:')
         ->not->toContain('ApplicationKeyIsSet.php')
         ->not->toContain('laravel/doctor ApplicationKeyIsSet.php');
