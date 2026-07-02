@@ -28,7 +28,6 @@ class DatabaseConnectionIsReachable extends Diagnostic
         return [
             'not-configured' => Outcome::skip('Laravel does not have a default database connection configured.'),
             'connection-missing' => Outcome::skip('The default database connection is not configured.'),
-            'manager-missing' => Outcome::skip('The database manager is not available.'),
             'unreachable' => Outcome::fail(
                 summary: 'Laravel cannot connect to the default database connection.',
                 remediation: 'Check DB_CONNECTION and the database credentials in your environment file.',
@@ -42,14 +41,10 @@ class DatabaseConnectionIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $connection = config('database.default');
+        $connection = config()->string('database.default', '');
 
-        if (! is_string($connection) || $connection === '') {
+        if ($connection === '') {
             return $this->result('not-configured');
-        }
-
-        if (! app()->bound('db')) {
-            return $this->result('manager-missing');
         }
 
         $configuration = $this->configuration($connection);
@@ -97,23 +92,11 @@ class DatabaseConnectionIsReachable extends Diagnostic
     {
         $configuration = config("database.connections.{$connection}");
 
-        if (is_string($configuration)) {
-            return (new ConfigurationUrlParser)->parseConfiguration($configuration);
-        }
-
-        if (! is_array($configuration)) {
+        if (! is_string($configuration) && ! is_array($configuration)) {
             return null;
         }
 
-        $normalized = [];
-
-        foreach ($configuration as $key => $value) {
-            if (is_string($key)) {
-                $normalized[$key] = $value;
-            }
-        }
-
-        return (new ConfigurationUrlParser)->parseConfiguration($normalized);
+        return (new ConfigurationUrlParser)->parseConfiguration($configuration);
     }
 
     /**

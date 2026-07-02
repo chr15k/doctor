@@ -207,13 +207,7 @@ class DoctorCommand extends Command
      */
     protected function optionList(string $name): array
     {
-        $value = $this->option($name);
-
-        if (! is_array($value)) {
-            return is_string($value) && $value !== '' ? [$value] : [];
-        }
-
-        return array_values(array_filter($value, is_string(...)));
+        return array_values(array_filter((array) $this->option($name), is_string(...)));
     }
 
     /**
@@ -223,31 +217,7 @@ class DoctorCommand extends Command
      */
     protected function configList(string $name): array
     {
-        $value = config('doctor.'.$name, []);
-
-        if (is_string($value)) {
-            return [$value];
-        }
-
-        if (! is_iterable($value)) {
-            return [];
-        }
-
-        $values = [];
-
-        foreach ($value as $key => $item) {
-            if (is_string($key)) {
-                $values[] = $key;
-
-                continue;
-            }
-
-            if (is_string($item)) {
-                $values[] = $item;
-            }
-        }
-
-        return array_values(array_unique($values));
+        return array_values(array_filter(config()->array('doctor.'.$name, []), is_string(...)));
     }
 
     /**
@@ -281,8 +251,7 @@ class DoctorCommand extends Command
      */
     protected function shouldUseTasks(): bool
     {
-        return function_exists('Laravel\Prompts\task')
-            && function_exists('pcntl_fork')
+        return function_exists('pcntl_fork')
             && $this->output->isDecorated()
             && $this->input->isInteractive();
     }

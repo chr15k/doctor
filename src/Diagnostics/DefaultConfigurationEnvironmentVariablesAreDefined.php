@@ -6,26 +6,27 @@ use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 use Laravel\Doctor\Support\EnvironmentVariables;
 
 class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
 {
-    private const DEFAULT_CONFIGURATION_VARIABLE_RESOLVERS = [
-        'app.php' => 'appConfigurationVariables',
-        'auth.php' => 'authConfigurationVariables',
-        'broadcasting.php' => 'broadcastingConfigurationVariables',
-        'cache.php' => 'cacheConfigurationVariables',
-        'concurrency.php' => 'concurrencyConfigurationVariables',
-        'cors.php' => 'corsConfigurationVariables',
-        'database.php' => 'databaseConfigurationVariables',
-        'filesystems.php' => 'filesystemsConfigurationVariables',
-        'hashing.php' => 'hashingConfigurationVariables',
-        'logging.php' => 'loggingConfigurationVariables',
-        'mail.php' => 'mailConfigurationVariables',
-        'queue.php' => 'queueConfigurationVariables',
-        'services.php' => 'servicesConfigurationVariables',
-        'session.php' => 'sessionConfigurationVariables',
-        'view.php' => 'viewConfigurationVariables',
+    private const DEFAULT_CONFIGURATION_FILES = [
+        'app.php',
+        'auth.php',
+        'broadcasting.php',
+        'cache.php',
+        'concurrency.php',
+        'cors.php',
+        'database.php',
+        'filesystems.php',
+        'hashing.php',
+        'logging.php',
+        'mail.php',
+        'queue.php',
+        'services.php',
+        'session.php',
+        'view.php',
     ];
 
     public string $name = 'Config env vars are defined';
@@ -97,13 +98,7 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
             }
         }
 
-        $normalized = [];
-
-        foreach ($variables as $variable => $files) {
-            $normalized[$variable] = $files;
-        }
-
-        return $normalized;
+        return $variables;
     }
 
     /**
@@ -113,9 +108,19 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
      */
     private function requiredVariablesFor(string $file): array
     {
-        $resolver = self::DEFAULT_CONFIGURATION_VARIABLE_RESOLVERS[basename($file)] ?? null;
-
-        return $resolver === null ? [] : $this->{$resolver}($file);
+        return match (basename($file)) {
+            'app.php' => $this->appConfigurationVariables($file),
+            'broadcasting.php' => $this->broadcastingConfigurationVariables($file),
+            'cache.php' => $this->cacheConfigurationVariables($file),
+            'database.php' => $this->databaseConfigurationVariables($file),
+            'filesystems.php' => $this->filesystemsConfigurationVariables($file),
+            'logging.php' => $this->loggingConfigurationVariables($file),
+            'mail.php' => $this->mailConfigurationVariables($file),
+            'queue.php' => $this->queueConfigurationVariables($file),
+            'services.php' => $this->servicesConfigurationVariables($file),
+            'session.php' => $this->sessionConfigurationVariables($file),
+            default => $this->genericConfigurationVariables($file),
+        };
     }
 
     /**
@@ -128,16 +133,6 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
         return $this->exceptVariables($this->genericConfigurationVariables($file), [
             'ASSET_URL',
         ]);
-    }
-
-    /**
-     * Get required environment variables from Laravel's auth configuration.
-     *
-     * @return list<string>
-     */
-    private function authConfigurationVariables(string $file): array
-    {
-        return $this->genericConfigurationVariables($file);
     }
 
     /**
@@ -193,26 +188,6 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
     }
 
     /**
-     * Get required environment variables from Laravel's concurrency configuration.
-     *
-     * @return list<string>
-     */
-    private function concurrencyConfigurationVariables(string $file): array
-    {
-        return $this->genericConfigurationVariables($file);
-    }
-
-    /**
-     * Get required environment variables from Laravel's CORS configuration.
-     *
-     * @return list<string>
-     */
-    private function corsConfigurationVariables(string $file): array
-    {
-        return $this->genericConfigurationVariables($file);
-    }
-
-    /**
      * Get required environment variables from Laravel's database configuration.
      *
      * @return list<string>
@@ -253,16 +228,6 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
                 'AWS_DEFAULT_REGION',
             ] : []),
         );
-    }
-
-    /**
-     * Get required environment variables from Laravel's hashing configuration.
-     *
-     * @return list<string>
-     */
-    private function hashingConfigurationVariables(string $file): array
-    {
-        return $this->genericConfigurationVariables($file);
     }
 
     /**
@@ -389,16 +354,6 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
             'SESSION_SECURE_COOKIE',
             'SESSION_STORE',
         ]);
-    }
-
-    /**
-     * Get required environment variables from Laravel's view configuration.
-     *
-     * @return list<string>
-     */
-    private function viewConfigurationVariables(string $file): array
-    {
-        return $this->genericConfigurationVariables($file);
     }
 
     /**
@@ -541,16 +496,10 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
      */
     private function configurationFiles(): array
     {
-        $files = File::glob(base_path('config/*.php')) ?: [];
-        $configured = [];
-
-        foreach ($files as $file) {
-            if (is_string($file) && array_key_exists(basename($file), self::DEFAULT_CONFIGURATION_VARIABLE_RESOLVERS)) {
-                $configured[] = $file;
-            }
-        }
-
-        return $configured;
+        return array_values(array_filter(
+            File::glob(base_path('config/*.php')) ?: [],
+            static fn (string $file): bool => in_array(basename($file), self::DEFAULT_CONFIGURATION_FILES, true),
+        ));
     }
 
     /**
@@ -716,8 +665,8 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
      */
     private function formatMissingVariables(array $missing): string
     {
-        return implode(PHP_EOL, array_map(
-            static fn (string $variable, array $files): string => sprintf('- %s (%s)', $variable, implode(', ', array_unique($files))),
+        return Details::bullets(array_map(
+            static fn (string $variable, array $files): string => sprintf('%s (%s)', $variable, implode(', ', array_unique($files))),
             array_keys($missing),
             $missing,
         ));

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Redis;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 use Throwable;
 
 class RedisConnectionsAreReachable extends Diagnostic
@@ -54,7 +55,7 @@ class RedisConnectionsAreReachable extends Diagnostic
 
         if ($failures !== []) {
             return $this->result('unreachable')
-                ->withDetails($this->formatFailures($failures));
+                ->withDetails(Details::failures($failures));
         }
 
         return $this->result('reachable');
@@ -79,9 +80,9 @@ class RedisConnectionsAreReachable extends Diagnostic
      */
     private function cacheConnection(): ?string
     {
-        $store = config('cache.default');
+        $store = config()->string('cache.default', '');
 
-        if (! is_string($store) || $store === '') {
+        if ($store === '') {
             return null;
         }
 
@@ -99,9 +100,9 @@ class RedisConnectionsAreReachable extends Diagnostic
      */
     private function queueConnection(): ?string
     {
-        $connection = config('queue.default');
+        $connection = config()->string('queue.default', '');
 
-        if (! is_string($connection) || $connection === '') {
+        if ($connection === '') {
             return null;
         }
 
@@ -132,19 +133,5 @@ class RedisConnectionsAreReachable extends Diagnostic
     private function configuredConnection(mixed $connection): string
     {
         return is_string($connection) && $connection !== '' ? $connection : 'default';
-    }
-
-    /**
-     * Format Redis failures.
-     *
-     * @param  array<string, string>  $failures
-     */
-    private function formatFailures(array $failures): string
-    {
-        return implode(PHP_EOL, array_map(
-            static fn (string $connection, string $message): string => sprintf('- %s: %s', $connection, $message),
-            array_keys($failures),
-            $failures,
-        ));
     }
 }

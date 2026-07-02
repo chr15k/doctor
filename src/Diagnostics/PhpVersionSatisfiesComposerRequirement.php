@@ -36,33 +36,17 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $constraint = $this->composer()->phpConstraint();
+        $constraint = (new ComposerJson)->phpConstraint();
 
         if ($constraint === null) {
             return $this->result('constraint-missing');
         }
 
-        if ($this->phpVersionSatisfies($constraint)) {
+        if (Semver::satisfies(PHP_VERSION, $constraint)) {
             return $this->result('satisfied');
         }
 
         return $this->result('unsatisfied')
             ->withDetails(sprintf('PHP %s does not satisfy [%s].', PHP_VERSION, $constraint));
-    }
-
-    /**
-     * Determine whether the running PHP version satisfies the constraint.
-     */
-    private function phpVersionSatisfies(string $constraint): bool
-    {
-        return Semver::satisfies(PHP_VERSION, $constraint);
-    }
-
-    /**
-     * Get the Composer manifest reader.
-     */
-    private function composer(): ComposerJson
-    {
-        return new ComposerJson;
     }
 }

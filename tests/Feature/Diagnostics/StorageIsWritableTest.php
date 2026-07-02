@@ -65,7 +65,7 @@ it('reports missing writable storage directories', function (): void {
     $outcome = $report->diagnostics()[0];
 
     expect($outcome->result->status->value)->toBe('fail')
-        ->and($outcome->result->details)->toContain('storage/ (directory does not exist)')
+        ->and($outcome->result->details)->toContain('storage/: directory does not exist')
         ->and($outcome->result->confirmation)->toBe('Would you like Doctor to make Laravel\'s storage directories writable?')
         ->and($outcome->result->remediation)->toBe('Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.');
 });

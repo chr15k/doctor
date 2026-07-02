@@ -31,7 +31,6 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
                 remediation: 'Create the SQLite database file at the configured path.',
                 confirmation: 'Would you like Doctor to create the SQLite database file?',
             ),
-            'path-missing' => Outcome::fail('The SQLite database file path was not available from the diagnostic result.'),
             'already-exists' => Outcome::skip('The SQLite database file already exists.'),
             'creation-failed' => Outcome::fail('The SQLite database file could not be created.'),
             'created' => Outcome::pass('The SQLite database file was created.'),
@@ -47,9 +46,9 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
             return $this->result('not-sqlite');
         }
 
-        $database = config('database.connections.sqlite.database');
+        $database = config()->string('database.connections.sqlite.database', '');
 
-        if (! is_string($database) || $database === '' || $database === ':memory:') {
+        if ($database === '' || $database === ':memory:') {
             return $this->result('not-file');
         }
 
@@ -71,11 +70,8 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
      */
     public function fix(DiagnosticResult $result): FixResult
     {
-        $database = $result->context['database'] ?? null;
-
-        if (! is_string($database) || $database === '') {
-            return $this->fixResult('path-missing');
-        }
+        /** @var string $database */
+        $database = $result->context['database'];
 
         if (is_file($database)) {
             return $this->fixResult('already-exists');

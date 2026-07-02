@@ -40,9 +40,9 @@ class SessionDriverIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $driver = config('session.driver');
+        $driver = config()->string('session.driver', '');
 
-        if (! is_string($driver) || $driver === '') {
+        if ($driver === '') {
             return $this->result('not-configured');
         }
 
@@ -75,9 +75,9 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeFileSessions(): void
     {
-        $path = config('session.files');
+        $path = config()->string('session.files', '');
 
-        if (! is_string($path) || $path === '') {
+        if ($path === '') {
             throw new RuntimeException('The session file path is not configured.');
         }
 
@@ -91,10 +91,10 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeDatabaseSessions(): void
     {
-        $table = config('session.table', 'sessions');
+        $table = config()->string('session.table', 'sessions');
 
-        if (! is_string($table) || ! $this->schema()->hasTable($table)) {
-            throw new RuntimeException(sprintf('The [%s] session table does not exist.', is_string($table) ? $table : 'sessions'));
+        if (! $this->schema()->hasTable($table)) {
+            throw new RuntimeException(sprintf('The [%s] session table does not exist.', $table));
         }
     }
 
@@ -103,13 +103,9 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeRedisSessions(): void
     {
-        $connection = config('session.connection', 'default');
+        $connection = config('session.connection');
 
-        if (! is_string($connection) || $connection === '') {
-            $connection = 'default';
-        }
-
-        Redis::connection($connection)->ping();
+        Redis::connection(is_string($connection) && $connection !== '' ? $connection : 'default')->ping();
     }
 
     /**
@@ -119,15 +115,7 @@ class SessionDriverIsReachable extends Diagnostic
     {
         $connection = config('session.connection');
 
-        $schema = is_string($connection) && $connection !== ''
-            ? Schema::connection($connection)
-            : Schema::getFacadeRoot();
-
-        if (! $schema instanceof Builder) {
-            throw new RuntimeException('The database schema builder is not available.');
-        }
-
-        return $schema;
+        return Schema::connection(is_string($connection) && $connection !== '' ? $connection : null);
     }
 
     /**
@@ -135,12 +123,6 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeSessionManager(): void
     {
-        $manager = app('session');
-
-        if (! $manager instanceof SessionManager) {
-            throw new RuntimeException('The session manager is not available.');
-        }
-
-        $manager->driver();
+        app(SessionManager::class)->driver();
     }
 }

@@ -7,6 +7,7 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 use RuntimeException;
 
 class StorageIsWritable extends Diagnostic implements Fixable
@@ -45,7 +46,7 @@ class StorageIsWritable extends Diagnostic implements Fixable
         }
 
         return $this->result('not-writable')
-            ->withDetails($this->formatFailures($failures));
+            ->withDetails(Details::failures($failures));
     }
 
     /**
@@ -73,7 +74,7 @@ class StorageIsWritable extends Diagnostic implements Fixable
 
         if ($failures !== []) {
             return $this->fixResult('still-not-writable')
-                ->withDetails($this->formatFailures($failures));
+                ->withDetails(Details::failures($failures));
         }
 
         if ($changed === []) {
@@ -120,20 +121,6 @@ class StorageIsWritable extends Diagnostic implements Fixable
         }
 
         return $failures;
-    }
-
-    /**
-     * @param  array<string, string>  $failures
-     */
-    private function formatFailures(array $failures): string
-    {
-        $formatted = [];
-
-        foreach ($failures as $relative => $reason) {
-            $formatted[] = sprintf('- %s (%s)', $relative, $reason);
-        }
-
-        return implode(PHP_EOL, $formatted);
     }
 
     private function canWriteToDirectory(string $path): bool

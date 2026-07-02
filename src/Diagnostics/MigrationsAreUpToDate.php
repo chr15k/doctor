@@ -6,6 +6,7 @@ use Illuminate\Database\Migrations\Migrator;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 use Throwable;
 
 class MigrationsAreUpToDate extends Diagnostic
@@ -22,7 +23,6 @@ class MigrationsAreUpToDate extends Diagnostic
     protected function outcomes(): array
     {
         return [
-            'service-missing' => Outcome::skip('The migration service is not available.'),
             'no-files' => Outcome::pass('The application does not have migration files.'),
             'repository-missing' => Outcome::fail(
                 summary: 'The migrations table does not exist.',
@@ -42,10 +42,6 @@ class MigrationsAreUpToDate extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        if (! app()->bound('migrator')) {
-            return $this->result('service-missing');
-        }
-
         /** @var Migrator $migrator */
         $migrator = app('migrator');
 
@@ -77,9 +73,6 @@ class MigrationsAreUpToDate extends Diagnostic
         }
 
         return $this->result('pending')
-            ->withDetails(implode(PHP_EOL, array_map(
-                static fn (string $migration): string => '- '.$migration,
-                $pending,
-            )));
+            ->withDetails(Details::bullets($pending));
     }
 }

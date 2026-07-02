@@ -1,7 +1,6 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
-use Laravel\Doctor\Results\DiagnosticResult;
 
 function doctor_sqlite_database_base_path(): string
 {
@@ -50,11 +49,4 @@ it('reports a missing sqlite database file and carries the path to the fix', fun
         ->and($fix->status->value)->toBe('pass')
         ->and(is_file($basePath.'/database/database.sqlite'))->toBeTrue()
         ->and(is_file($basePath.'/database/changed.sqlite'))->toBeFalse();
-});
-
-it('fails the fix when the database path is missing from the result', function (): void {
-    $fix = (new SqliteDatabaseExists)->fix(DiagnosticResult::fail('missing'));
-
-    expect($fix->status->value)->toBe('fail')
-        ->and($fix->summary)->toBe('The SQLite database file path was not available from the diagnostic result.');
 });

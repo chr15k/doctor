@@ -40,52 +40,6 @@ class DiagnosticSource
     }
 
     /**
-     * Resolve the Composer package for the given diagnostic class.
-     *
-     * @param  class-string  $class
-     */
-    public static function package(string $class): ?string
-    {
-        return self::resolve($class)->package;
-    }
-
-    /**
-     * Resolve the user-facing source label for the given diagnostic class.
-     *
-     * @param  class-string  $class
-     */
-    public static function source(string $class): string
-    {
-        return self::resolve($class)->display();
-    }
-
-    /**
-     * Determine whether the diagnostic belongs to the application source.
-     *
-     * @param  class-string  $class
-     */
-    public static function application(string $class): bool
-    {
-        return self::resolve($class)->application;
-    }
-
-    /**
-     * Get the display label for the source.
-     */
-    public function display(): string
-    {
-        return $this->displayForPackage($this->package);
-    }
-
-    /**
-     * Get the display label for the source using an explicit package.
-     */
-    public function displayForPackage(?string $package): string
-    {
-        return $package ?? 'application';
-    }
-
-    /**
      * Resolve the source metadata for the given diagnostic class.
      *
      * @param  class-string  $class

@@ -25,6 +25,20 @@ class EnvironmentVariables
     }
 
     /**
+     * Get the application's environment files.
+     *
+     * @return list<string>
+     */
+    public function files(): array
+    {
+        return array_values(array_filter(
+            File::glob(base_path('.env*')) ?: [],
+            static fn (string $file): bool => is_file($file)
+                && ! str_ends_with(basename($file), '.example'),
+        ));
+    }
+
+    /**
      * Get variables declared by the application's environment files.
      *
      * @return array<string, true>
@@ -37,12 +51,8 @@ class EnvironmentVariables
 
         $variables = [];
 
-        foreach ($this->environmentFiles() as $file) {
+        foreach ($this->files() as $file) {
             foreach (File::lines($file) as $line) {
-                if (! is_string($line)) {
-                    continue;
-                }
-
                 $key = $this->keyFromLine($line);
 
                 if ($key !== null) {
@@ -52,23 +62,6 @@ class EnvironmentVariables
         }
 
         return $this->fileVariables = $variables;
-    }
-
-    /**
-     * Get the application's environment files.
-     *
-     * @return list<string>
-     */
-    private function environmentFiles(): array
-    {
-        $files = File::glob(base_path('.env*')) ?: [];
-
-        return array_values(array_filter(
-            $files,
-            static fn (string $file): bool => is_file($file)
-                && basename($file) !== '.env.example'
-                && ! str_ends_with(basename($file), '.example'),
-        ));
     }
 
     /**

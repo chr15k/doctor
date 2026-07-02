@@ -8,6 +8,7 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Support\Details;
 
 class PublicStorageLinkExists extends Diagnostic implements Fixable
 {
@@ -65,7 +66,11 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
 
         if (! $process->successful()) {
             return $this->fixResult('creation-failed')
-                ->withDetails(trim($process->errorOutput() !== '' ? $process->errorOutput() : $process->output()));
+                ->withDetails(Details::processOutput(
+                    $process->output(),
+                    $process->errorOutput(),
+                    'The storage:link command exited without output.',
+                ));
         }
 
         return $this->fixResult('created');

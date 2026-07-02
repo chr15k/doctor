@@ -40,9 +40,9 @@ class QueueConnectionIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $connection = config('queue.default');
+        $connection = config()->string('queue.default', '');
 
-        if (! is_string($connection) || $connection === '') {
+        if ($connection === '') {
             return $this->result('not-configured');
         }
 
@@ -94,11 +94,7 @@ class QueueConnectionIsReachable extends Diagnostic
     {
         $connection = $configuration['connection'] ?? 'default';
 
-        if (! is_string($connection) || $connection === '') {
-            $connection = 'default';
-        }
-
-        Redis::connection($connection)->ping();
+        Redis::connection(is_string($connection) && $connection !== '' ? $connection : 'default')->ping();
     }
 
     /**
@@ -114,15 +110,7 @@ class QueueConnectionIsReachable extends Diagnostic
             throw new RuntimeException(sprintf('The [%s] queue connection is not configured.', $connection));
         }
 
-        $configured = [];
-
-        foreach ($configuration as $key => $value) {
-            if (is_string($key)) {
-                $configured[$key] = $value;
-            }
-        }
-
-        return $configured;
+        return $configuration;
     }
 
     /**
@@ -134,14 +122,6 @@ class QueueConnectionIsReachable extends Diagnostic
     {
         $connection = $configuration['connection'] ?? null;
 
-        $schema = is_string($connection) && $connection !== ''
-            ? Schema::connection($connection)
-            : Schema::getFacadeRoot();
-
-        if (! $schema instanceof Builder) {
-            throw new RuntimeException('The database schema builder is not available.');
-        }
-
-        return $schema;
+        return Schema::connection(is_string($connection) && $connection !== '' ? $connection : null);
     }
 }

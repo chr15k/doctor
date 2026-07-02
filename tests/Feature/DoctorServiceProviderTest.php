@@ -85,7 +85,7 @@ it('does not repeat diagnostics that were fixed', function (): void {
     expect(file_get_contents($environmentPath.'/.env'))
         ->toContain('APP_KEY=base64:')
         ->and($contents)->toContain('Re-running diagnostics after applying fixes...')
-        ->and($contents)->toContain('Has application key: The application key was generated.')
+        ->and($contents)->toContain('App key is set: The application key was generated.')
         ->and($contents)->toContain('All diagnostics passed or were fixed.')
         ->and($exitCode)->toBe(0);
 });

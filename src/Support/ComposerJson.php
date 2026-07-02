@@ -79,15 +79,8 @@ class ComposerJson
             return null;
         }
 
-        $composer = [];
-
-        foreach ($decoded as $key => $value) {
-            if (is_string($key)) {
-                $composer[$key] = $value;
-            }
-        }
-
-        return $this->contents = $composer;
+        /** @var array<string, mixed> $decoded */
+        return $this->contents = $decoded;
     }
 
     /**

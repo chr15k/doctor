@@ -38,9 +38,9 @@ class FilesystemDisksAreReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $disk = config('filesystems.default');
+        $disk = config()->string('filesystems.default', '');
 
-        if (! is_string($disk) || $disk === '') {
+        if ($disk === '') {
             return $this->result('not-configured');
         }
 
@@ -104,18 +104,6 @@ class FilesystemDisksAreReachable extends Diagnostic
     {
         $configuration = config("filesystems.disks.{$disk}");
 
-        if (! is_array($configuration)) {
-            return null;
-        }
-
-        $configured = [];
-
-        foreach ($configuration as $key => $value) {
-            if (is_string($key)) {
-                $configured[$key] = $value;
-            }
-        }
-
-        return $configured;
+        return is_array($configuration) ? $configuration : null;
     }
 }

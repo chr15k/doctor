@@ -36,9 +36,9 @@ class CacheStoreIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $store = config('cache.default');
+        $store = config()->string('cache.default', '');
 
-        if (! is_string($store) || $store === '') {
+        if ($store === '') {
             return $this->result('not-configured');
         }
 

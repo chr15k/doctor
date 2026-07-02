@@ -10,6 +10,7 @@ use Laravel\Doctor\Results\Outcome;
 use LogicException;
 use RuntimeException;
 use Throwable;
+use UnitEnum;
 
 class ConfigurationCanBeCached extends Diagnostic
 {
@@ -72,13 +73,11 @@ class ConfigurationCanBeCached extends Diagnostic
     private function serializationException(Throwable $previous): Throwable
     {
         foreach (Arr::dot(config()->all()) as $key => $value) {
-            try {
-                eval(var_export($value, true).';');
-            } catch (Throwable $e) {
+            if (is_object($value) && ! $value instanceof UnitEnum && ! method_exists($value, '__set_state')) {
                 return new LogicException(
                     sprintf('The configuration value at [%s] is not serializable.', $key),
                     0,
-                    $e,
+                    $previous,
                 );
             }
         }

@@ -12,9 +12,7 @@ enum EnvironmentMode: string
      */
     public static function current(): self
     {
-        $environment = app()->environment();
-
-        return self::fromLaravelEnvironment(is_string($environment) ? $environment : '');
+        return self::fromLaravelEnvironment((string) app()->environment());
     }
 
     /**
@@ -22,23 +20,11 @@ enum EnvironmentMode: string
      */
     public static function fromLaravelEnvironment(string $environment): self
     {
-        $environments = config('doctor.environments', []);
-
-        $mode = is_array($environments)
-            ? ($environments[$environment] ?? self::Production->value)
-            : self::Production->value;
+        $mode = config()->array('doctor.environments', [])[$environment] ?? null;
 
         return is_string($mode)
             ? (self::tryFrom($mode) ?? self::Production)
             : self::Production;
-    }
-
-    /**
-     * Determine whether this mode should use local development expectations.
-     */
-    public function isLocal(): bool
-    {
-        return $this === self::Local;
     }
 
     /**

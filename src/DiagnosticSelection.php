@@ -154,32 +154,17 @@ class DiagnosticSelection
     }
 
     /**
-     * Determine whether a criterion matches one of the diagnostic's package selectors.
+     * Determine whether a criterion matches the diagnostic's package.
      */
     protected function matchesPackage(string $criterion, Diagnostic $diagnostic): bool
     {
-        foreach ($this->packages($diagnostic) as $package) {
-            if ($criterion === $package) {
-                return true;
-            }
-
-            if (str_ends_with($criterion, '/*') && str_starts_with($package, substr($criterion, 0, -1))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Get the Composer package selectors for the diagnostic.
-     *
-     * @return list<string>
-     */
-    protected function packages(Diagnostic $diagnostic): array
-    {
         $package = $diagnostic->package();
 
-        return $package !== null ? [$package] : [];
+        if ($package === null) {
+            return false;
+        }
+
+        return $criterion === $package
+            || (str_ends_with($criterion, '/*') && str_starts_with($package, substr($criterion, 0, -1)));
     }
 }

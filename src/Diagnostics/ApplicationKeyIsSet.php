@@ -12,7 +12,7 @@ use Laravel\Doctor\Results\Outcome;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
-    public string $name = 'Has application key';
+    public string $name = 'App key is set';
 
     public string $group = 'environment';
 
@@ -75,13 +75,9 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
 
     private function applicationCipher(): string
     {
-        $cipher = config('app.cipher');
+        $cipher = config()->string('app.cipher', '');
 
-        if (! is_string($cipher) || $cipher === '') {
-            $cipher = 'AES-256-CBC';
-        }
-
-        return $cipher;
+        return $cipher === '' ? 'AES-256-CBC' : $cipher;
     }
 
     private function writeKeyToEnvironmentFile(string $key): bool

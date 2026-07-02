@@ -129,11 +129,11 @@ class Doctor
             $result = $diagnostic->fix($outcome->result);
         } catch (Throwable $e) {
             $result = FixResult::error(
-                sprintf('Failed to fix %s: %s', $outcome->diagnostic->name, $e->getMessage()),
+                sprintf('Failed to fix %s: %s', $diagnostic->name, $e->getMessage()),
             )->withContext('exception', $e::class);
         }
 
-        return new DiagnosticFixOutcome($outcome->diagnostic, $result);
+        return new DiagnosticFixOutcome($diagnostic, $result);
     }
 
     /**

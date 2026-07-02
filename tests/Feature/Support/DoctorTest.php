@@ -34,8 +34,8 @@ it('rejects classes that are not diagnostics', function (): void {
 })->throws(InvalidArgumentException::class);
 
 it('resolves diagnostic sources from the class file', function (): void {
-    expect(DiagnosticSource::package(PassingDiagnostic::class))->toBe('laravel/doctor')
-        ->and(DiagnosticSource::package(Command::class))->toBe('laravel/framework')
+    expect(DiagnosticSource::resolve(PassingDiagnostic::class)->package)->toBe('laravel/doctor')
+        ->and(DiagnosticSource::resolve(Command::class)->package)->toBe('laravel/framework')
         ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->relativeFile)->toBe('tests/Fixtures/Diagnostics/PassingDiagnostic.php')
         ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->application)->toBeTrue()
         ->and(DiagnosticSource::resolve(ApplicationKeyIsSet::class)->application)->toBeFalse()
@@ -71,7 +71,7 @@ it('does not treat notices as warnings', function (): void {
 it('defaults diagnostic metadata from the class name', function (): void {
     $diagnostic = new DefaultMetadataDiagnostic;
 
-    expect($diagnostic->name)->toBe('Default Metadata Diagnostic')
+    expect($diagnostic->name)->toBe('Default metadata diagnostic')
         ->and($diagnostic->group)->toBe('default-metadata-diagnostic');
 });
 

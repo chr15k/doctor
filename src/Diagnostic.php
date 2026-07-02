@@ -20,7 +20,7 @@ abstract class Diagnostic
      */
     public function __construct()
     {
-        $this->name ??= Str::headline(class_basename(static::class));
+        $this->name ??= Str::of(class_basename(static::class))->snake(' ')->ucfirst()->toString();
         $this->group ??= Str::kebab(class_basename(static::class));
     }
 
@@ -160,7 +160,7 @@ abstract class Diagnostic
      */
     public function source(): string
     {
-        return $this->diagnosticSource()->displayForPackage($this->package());
+        return $this->package() ?? 'application';
     }
 
     /**
@@ -170,6 +170,7 @@ abstract class Diagnostic
     {
         $source = $this->diagnosticSource();
 
+        // A diagnostic may override package() to claim a different source...
         if ($this->package() !== $source->package) {
             return $this->package() === null;
         }

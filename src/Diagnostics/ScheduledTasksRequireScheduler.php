@@ -2,7 +2,6 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
@@ -22,7 +21,6 @@ class ScheduledTasksRequireScheduler extends Diagnostic
     protected function outcomes(): array
     {
         return [
-            'scheduler-missing' => Outcome::skip('The scheduler service is not available.'),
             'no-tasks' => Outcome::pass('Laravel does not have scheduled tasks.'),
             'tasks-registered' => Outcome::notice(
                 summary: 'Laravel has scheduled tasks.',
@@ -36,40 +34,10 @@ class ScheduledTasksRequireScheduler extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        if (! $this->schedulerIsAvailable()) {
-            return $this->result('scheduler-missing');
-        }
-
-        if (! $this->hasScheduledTasks()) {
+        if (app(Schedule::class)->events() === []) {
             return $this->result('no-tasks');
         }
 
         return $this->result('tasks-registered');
-    }
-
-    /**
-     * Determine whether Laravel's scheduler service is available.
-     */
-    private function schedulerIsAvailable(): bool
-    {
-        return app()->bound(Schedule::class);
-    }
-
-    /**
-     * Determine whether scheduled tasks are registered.
-     */
-    private function hasScheduledTasks(): bool
-    {
-        return $this->events() !== [];
-    }
-
-    /**
-     * Get registered scheduled events.
-     *
-     * @return list<Event>
-     */
-    private function events(): array
-    {
-        return array_values(app(Schedule::class)->events());
     }
 }

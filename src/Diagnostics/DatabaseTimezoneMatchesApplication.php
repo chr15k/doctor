@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\Connection;
-use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\DB;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
@@ -30,7 +30,6 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
         return [
             'application-timezone-invalid' => Outcome::skip('Laravel does not have a valid application timezone configured.'),
             'connection-missing' => Outcome::skip('Laravel does not have a default database connection configured.'),
-            'manager-missing' => Outcome::skip('The database manager is not available.'),
             'connection-inspection-failed' => Outcome::warn(
                 summary: 'Laravel could not inspect the database timezone.',
                 remediation: 'Confirm the default database connection is reachable, then run Doctor again.',
@@ -66,12 +65,8 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
             return $this->result('connection-missing');
         }
 
-        if (! app()->bound('db')) {
-            return $this->result('manager-missing');
-        }
-
         try {
-            $database = $this->database()->connection($connection);
+            $database = DB::connection($connection);
             $driver = $database->getDriverName();
         } catch (Throwable $e) {
             return $this->result('connection-inspection-failed')
@@ -106,13 +101,9 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
      */
     private function applicationTimezone(): ?DateTimeZone
     {
-        $timezone = config('app.timezone');
+        $timezone = config()->string('app.timezone', '');
 
-        if (! is_string($timezone) || $timezone === '') {
-            return null;
-        }
-
-        return $this->timezone($timezone);
+        return $timezone === '' ? null : $this->timezone($timezone);
     }
 
     /**
@@ -120,20 +111,9 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
      */
     private function configuredConnection(): ?string
     {
-        $connection = config('database.default');
+        $connection = config()->string('database.default', '');
 
-        return is_string($connection) && $connection !== '' ? $connection : null;
-    }
-
-    /**
-     * Get the database manager.
-     */
-    private function database(): DatabaseManager
-    {
-        /** @var DatabaseManager $database */
-        $database = app('db');
-
-        return $database;
+        return $connection === '' ? null : $connection;
     }
 
     /**
