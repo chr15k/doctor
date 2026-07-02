@@ -93,6 +93,34 @@ PHP);
     expect($result->status->value)->toBe('pass');
 });
 
+it('ignores optional environment variables from laravel cache stores', function (): void {
+    $basePath = doctor_configuration_environment_base_path();
+
+    file_put_contents($basePath.'/config/cache.php', <<<'PHP'
+<?php
+
+return [
+    'default' => env('CACHE_STORE', 'database'),
+    'stores' => [
+        'database' => [
+            'driver' => 'database',
+        ],
+        'storage' => [
+            'driver' => 'storage',
+            'disk' => env('CACHE_STORAGE_DISK'),
+        ],
+    ],
+];
+PHP);
+
+    $this->app->setBasePath($basePath);
+    config(['cache.default' => 'database']);
+
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
+
+    expect($result->status->value)->toBe('pass');
+});
+
 it('ignores environment variables from unused laravel filesystem disks', function (): void {
     $basePath = doctor_configuration_environment_base_path();
 
@@ -247,4 +275,62 @@ PHP);
         ->and($result->details)->toContain('POSTMARK_TOKEN')
         ->and($result->details)->not->toContain('RESEND_KEY')
         ->and($result->details)->not->toContain('SLACK_BOT_USER_OAUTH_TOKEN');
+});
+
+it('ignores service credentials for unused laravel mailers', function (): void {
+    $basePath = doctor_configuration_environment_base_path();
+
+    file_put_contents($basePath.'/config/services.php', <<<'PHP'
+<?php
+
+return [
+    'postmark' => [
+        'token' => env('POSTMARK_TOKEN'),
+    ],
+    'resend' => [
+        'key' => env('RESEND_KEY'),
+    ],
+];
+PHP);
+
+    $this->app->setBasePath($basePath);
+    config([
+        'mail.default' => 'log',
+        'mail.mailers.log.transport' => 'log',
+        'mail.mailers.postmark.transport' => 'postmark',
+        'mail.mailers.resend.transport' => 'resend',
+    ]);
+
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
+
+    expect($result->status->value)->toBe('pass');
+});
+
+it('checks service credentials used by the selected laravel mailer transport', function (): void {
+    $basePath = doctor_configuration_environment_base_path();
+
+    file_put_contents($basePath.'/config/services.php', <<<'PHP'
+<?php
+
+return [
+    'postmark' => [
+        'token' => env('POSTMARK_TOKEN'),
+    ],
+    'resend' => [
+        'key' => env('RESEND_KEY'),
+    ],
+];
+PHP);
+
+    $this->app->setBasePath($basePath);
+    config([
+        'mail.default' => 'transactional',
+        'mail.mailers.transactional.transport' => 'resend',
+    ]);
+
+    $result = (new DefaultConfigurationEnvironmentVariablesAreDefined)->check();
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->details)->toContain('RESEND_KEY')
+        ->and($result->details)->not->toContain('POSTMARK_TOKEN');
 });

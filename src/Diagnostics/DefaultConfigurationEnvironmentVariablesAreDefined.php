@@ -177,6 +177,7 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
         return $this->exceptVariables($this->genericConfigurationVariables($file), [
             'AWS_ACCESS_KEY_ID',
             'AWS_SECRET_ACCESS_KEY',
+            'CACHE_STORAGE_DISK',
             'DB_CACHE_CONNECTION',
             'DB_CACHE_LOCK_CONNECTION',
             'DB_CACHE_LOCK_TABLE',
@@ -313,18 +314,7 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
     private function servicesConfigurationVariables(string $file): array
     {
         $variables = $this->genericConfigurationVariables($file);
-        $required = [];
-
-        foreach ($this->activeMailers($this->configuredString('mail.default', 'log')) as $mailer) {
-            $required = [
-                ...$required,
-                ...match ($mailer) {
-                    'postmark' => ['POSTMARK_TOKEN'],
-                    'resend' => ['RESEND_KEY'],
-                    default => [],
-                },
-            ];
-        }
+        $transport = $this->defaultMailTransport();
 
         return $this->mergeVariables(
             $this->exceptVariables($variables, [
@@ -337,7 +327,11 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
                 'SLACK_BOT_USER_DEFAULT_CHANNEL',
                 'SLACK_BOT_USER_OAUTH_TOKEN',
             ]),
-            $this->selectedVariables($variables, $required),
+            $this->selectedVariables($variables, match ($transport) {
+                'postmark' => ['POSTMARK_TOKEN'],
+                'resend' => ['RESEND_KEY'],
+                default => [],
+            }),
         );
     }
 
@@ -410,41 +404,6 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
     }
 
     /**
-     * Get the concrete mailers used by a mailer.
-     *
-     * @param  list<string>  $seen
-     * @return list<string>
-     */
-    private function activeMailers(string $mailer, array $seen = []): array
-    {
-        if (in_array($mailer, $seen, true)) {
-            return [];
-        }
-
-        $transport = config("mail.mailers.{$mailer}.transport");
-
-        if (! in_array($transport, ['failover', 'roundrobin'], true)) {
-            return [$mailer];
-        }
-
-        $mailers = config("mail.mailers.{$mailer}.mailers");
-
-        if (! is_array($mailers)) {
-            return [];
-        }
-
-        $active = [];
-
-        foreach ($mailers as $nested) {
-            if (is_string($nested) && $nested !== '') {
-                $active = [...$active, ...$this->activeMailers($nested, [...$seen, $mailer])];
-            }
-        }
-
-        return array_values(array_unique($active));
-    }
-
-    /**
      * Get a string configuration value with a fallback.
      */
     private function configuredString(string $key, string $default): string
@@ -452,6 +411,16 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
         $value = config($key);
 
         return is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    /**
+     * Get the transport used by the default mailer.
+     */
+    private function defaultMailTransport(): string
+    {
+        $mailer = $this->configuredString('mail.default', 'log');
+
+        return $this->configuredString("mail.mailers.{$mailer}.transport", $mailer);
     }
 
     /**
