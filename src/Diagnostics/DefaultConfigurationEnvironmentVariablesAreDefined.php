@@ -8,6 +8,7 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Outcome;
 use Laravel\Doctor\Support\Details;
 use Laravel\Doctor\Support\EnvironmentVariables;
+use Monolog\Handler\SyslogUdpHandler;
 
 class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
 {
@@ -27,6 +28,102 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
         'services.php',
         'session.php',
         'view.php',
+    ];
+
+    /**
+     * Environment variables that may be left undefined per configuration file.
+     *
+     * These are variables the framework tolerates as null, or credentials the
+     * platform may provide out of band (for example AWS credentials resolved
+     * from IAM roles). Variables that become required once a specific driver
+     * is active are re-added by conditionallyRequiredVariables().
+     */
+    private const OPTIONAL_VARIABLES = [
+        'app.php' => [
+            'ASSET_URL',
+        ],
+        'broadcasting.php' => [
+            'ABLY_KEY',
+            'PUSHER_APP_CLUSTER',
+            'PUSHER_APP_ID',
+            'PUSHER_APP_KEY',
+            'PUSHER_APP_SECRET',
+            'PUSHER_HOST',
+            'REVERB_APP_ID',
+            'REVERB_APP_KEY',
+            'REVERB_APP_SECRET',
+            'REVERB_HOST',
+        ],
+        'cache.php' => [
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'CACHE_STORAGE_DISK',
+            'DB_CACHE_CONNECTION',
+            'DB_CACHE_LOCK_CONNECTION',
+            'DB_CACHE_LOCK_TABLE',
+            'DYNAMODB_ENDPOINT',
+            'MEMCACHED_PASSWORD',
+            'MEMCACHED_PERSISTENT_ID',
+            'MEMCACHED_USERNAME',
+        ],
+        'database.php' => [
+            'DB_URL',
+            'MYSQL_ATTR_SSL_CA',
+            'REDIS_PASSWORD',
+            'REDIS_URL',
+            'REDIS_USERNAME',
+        ],
+        'filesystems.php' => [
+            'APP_URL',
+            'AWS_ACCESS_KEY_ID',
+            'AWS_BUCKET',
+            'AWS_DEFAULT_REGION',
+            'AWS_ENDPOINT',
+            'AWS_SECRET_ACCESS_KEY',
+            'AWS_URL',
+        ],
+        'logging.php' => [
+            'LOG_SLACK_WEBHOOK_URL',
+            'LOG_STDERR_FORMATTER',
+            'PAPERTRAIL_PORT',
+            'PAPERTRAIL_URL',
+        ],
+        'mail.php' => [
+            'MAIL_LOG_CHANNEL',
+            'MAIL_PASSWORD',
+            'MAIL_SCHEME',
+            'MAIL_URL',
+            'MAIL_USERNAME',
+            'POSTMARK_API_KEY',
+            'POSTMARK_TOKEN',
+            'RESEND_API_KEY',
+            'RESEND_KEY',
+        ],
+        'queue.php' => [
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'DB_QUEUE_CONNECTION',
+            'SQS_OVERFLOW_STORE',
+            'SQS_SUFFIX',
+        ],
+        'services.php' => [
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'GOOGLE_CLIENT_ID',
+            'GOOGLE_CLIENT_SECRET',
+            'POSTMARK_API_KEY',
+            'POSTMARK_TOKEN',
+            'RESEND_API_KEY',
+            'RESEND_KEY',
+            'SLACK_BOT_USER_DEFAULT_CHANNEL',
+            'SLACK_BOT_USER_OAUTH_TOKEN',
+        ],
+        'session.php' => [
+            'SESSION_CONNECTION',
+            'SESSION_DOMAIN',
+            'SESSION_SECURE_COOKIE',
+            'SESSION_STORE',
+        ],
     ];
 
     public string $name = 'Config env vars are defined';
@@ -108,246 +205,134 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
      */
     private function requiredVariablesFor(string $file): array
     {
-        return match (basename($file)) {
-            'app.php' => $this->appConfigurationVariables($file),
-            'broadcasting.php' => $this->broadcastingConfigurationVariables($file),
-            'cache.php' => $this->cacheConfigurationVariables($file),
-            'database.php' => $this->databaseConfigurationVariables($file),
-            'filesystems.php' => $this->filesystemsConfigurationVariables($file),
-            'logging.php' => $this->loggingConfigurationVariables($file),
-            'mail.php' => $this->mailConfigurationVariables($file),
-            'queue.php' => $this->queueConfigurationVariables($file),
-            'services.php' => $this->servicesConfigurationVariables($file),
-            'session.php' => $this->sessionConfigurationVariables($file),
-            default => $this->genericConfigurationVariables($file),
+        $variables = $this->genericConfigurationVariables($file);
+        $name = basename($file);
+
+        return $this->mergeVariables(
+            $this->exceptVariables($variables, self::OPTIONAL_VARIABLES[$name] ?? []),
+            $this->selectedVariables($variables, $this->conditionallyRequiredVariables($name)),
+        );
+    }
+
+    /**
+     * Get variables required by the active drivers for a configuration file.
+     *
+     * @return list<string>
+     */
+    private function conditionallyRequiredVariables(string $file): array
+    {
+        return match ($file) {
+            'broadcasting.php' => $this->requiredBroadcastingVariables(),
+            'filesystems.php' => $this->requiredFilesystemsVariables(),
+            'logging.php' => $this->requiredLoggingVariables(),
+            'mail.php', 'services.php' => $this->requiredMailCredentialVariables(),
+            'queue.php' => $this->requiredQueueVariables(),
+            default => [],
         };
     }
 
     /**
-     * Get required environment variables from Laravel's app configuration.
+     * Get variables required by the default broadcasting connection.
      *
      * @return list<string>
      */
-    private function appConfigurationVariables(string $file): array
+    private function requiredBroadcastingVariables(): array
     {
-        return $this->exceptVariables($this->genericConfigurationVariables($file), [
-            'ASSET_URL',
-        ]);
+        return match ($this->activeDriver('broadcasting.connections', 'broadcasting.default', 'null')) {
+            'ably' => ['ABLY_KEY'],
+            'pusher' => ['PUSHER_APP_ID', 'PUSHER_APP_KEY', 'PUSHER_APP_SECRET'],
+            'reverb' => ['REVERB_APP_ID', 'REVERB_APP_KEY', 'REVERB_APP_SECRET'],
+            default => [],
+        };
     }
 
     /**
-     * Get required environment variables from Laravel's broadcasting configuration.
+     * Get variables required by the default filesystem disk.
      *
      * @return list<string>
      */
-    private function broadcastingConfigurationVariables(string $file): array
+    private function requiredFilesystemsVariables(): array
     {
-        $variables = $this->genericConfigurationVariables($file);
-        $driver = $this->configuredString('broadcasting.default', 'null');
-
-        return $this->mergeVariables(
-            $this->exceptVariables($variables, [
-                'ABLY_KEY',
-                'PUSHER_APP_CLUSTER',
-                'PUSHER_APP_ID',
-                'PUSHER_APP_KEY',
-                'PUSHER_APP_SECRET',
-                'PUSHER_HOST',
-                'REVERB_APP_ID',
-                'REVERB_APP_KEY',
-                'REVERB_APP_SECRET',
-                'REVERB_HOST',
-            ]),
-            $this->selectedVariables($variables, match ($driver) {
-                'ably' => ['ABLY_KEY'],
-                'pusher' => ['PUSHER_APP_ID', 'PUSHER_APP_KEY', 'PUSHER_APP_SECRET'],
-                'reverb' => ['REVERB_APP_ID', 'REVERB_APP_KEY', 'REVERB_APP_SECRET'],
-                default => [],
-            }),
-        );
+        return $this->activeDriver('filesystems.disks', 'filesystems.default', 'local') === 's3'
+            ? ['AWS_BUCKET', 'AWS_DEFAULT_REGION']
+            : [];
     }
 
     /**
-     * Get required environment variables from Laravel's cache configuration.
+     * Get variables required by the active log channels.
      *
      * @return list<string>
      */
-    private function cacheConfigurationVariables(string $file): array
+    private function requiredLoggingVariables(): array
     {
-        return $this->exceptVariables($this->genericConfigurationVariables($file), [
-            'AWS_ACCESS_KEY_ID',
-            'AWS_SECRET_ACCESS_KEY',
-            'CACHE_STORAGE_DISK',
-            'DB_CACHE_CONNECTION',
-            'DB_CACHE_LOCK_CONNECTION',
-            'DB_CACHE_LOCK_TABLE',
-            'DYNAMODB_ENDPOINT',
-            'MEMCACHED_PASSWORD',
-            'MEMCACHED_PERSISTENT_ID',
-            'MEMCACHED_USERNAME',
-        ]);
-    }
-
-    /**
-     * Get required environment variables from Laravel's database configuration.
-     *
-     * @return list<string>
-     */
-    private function databaseConfigurationVariables(string $file): array
-    {
-        return $this->exceptVariables($this->genericConfigurationVariables($file), [
-            'DB_URL',
-            'MYSQL_ATTR_SSL_CA',
-            'REDIS_PASSWORD',
-            'REDIS_URL',
-            'REDIS_USERNAME',
-        ]);
-    }
-
-    /**
-     * Get required environment variables from Laravel's filesystem configuration.
-     *
-     * @return list<string>
-     */
-    private function filesystemsConfigurationVariables(string $file): array
-    {
-        $variables = $this->genericConfigurationVariables($file);
-        $disk = $this->configuredString('filesystems.default', 'local');
-
-        return $this->mergeVariables(
-            $this->exceptVariables($variables, [
-                'APP_URL',
-                'AWS_ACCESS_KEY_ID',
-                'AWS_BUCKET',
-                'AWS_DEFAULT_REGION',
-                'AWS_ENDPOINT',
-                'AWS_SECRET_ACCESS_KEY',
-                'AWS_URL',
-            ]),
-            $this->selectedVariables($variables, $disk === 's3' ? [
-                'AWS_BUCKET',
-                'AWS_DEFAULT_REGION',
-            ] : []),
-        );
-    }
-
-    /**
-     * Get required environment variables from Laravel's logging configuration.
-     *
-     * @return list<string>
-     */
-    private function loggingConfigurationVariables(string $file): array
-    {
-        $variables = $this->genericConfigurationVariables($file);
         $required = [];
 
         foreach ($this->activeLogChannels($this->configuredString('logging.default', 'stack')) as $channel) {
+            $required = [...$required, ...$this->logChannelVariables($channel)];
+        }
+
+        return $this->mergeVariables($required);
+    }
+
+    /**
+     * Get variables required by a log channel.
+     *
+     * @return list<string>
+     */
+    private function logChannelVariables(string $channel): array
+    {
+        $driver = $this->configuredString("logging.channels.{$channel}.driver", $channel);
+
+        if ($driver === 'slack') {
+            return ['LOG_SLACK_WEBHOOK_URL'];
+        }
+
+        if ($driver === 'monolog' && config("logging.channels.{$channel}.handler") === SyslogUdpHandler::class) {
+            return ['PAPERTRAIL_PORT', 'PAPERTRAIL_URL'];
+        }
+
+        return [];
+    }
+
+    /**
+     * Get variables required by the default queue connection.
+     *
+     * @return list<string>
+     */
+    private function requiredQueueVariables(): array
+    {
+        $connection = $this->configuredString('queue.default', 'database');
+
+        if ($this->configuredString("queue.connections.{$connection}.driver", $connection) !== 'sqs') {
+            return [];
+        }
+
+        return config("queue.connections.{$connection}.overflow.enabled") === true
+            ? ['SQS_OVERFLOW_STORE']
+            : [];
+    }
+
+    /**
+     * Get service credential variables required by the default mailer.
+     *
+     * @return list<string>
+     */
+    private function requiredMailCredentialVariables(): array
+    {
+        $required = [];
+
+        foreach ($this->activeMailTransports($this->configuredString('mail.default', 'log')) as $transport) {
             $required = [
                 ...$required,
-                ...match ($channel) {
-                    'papertrail' => ['PAPERTRAIL_PORT', 'PAPERTRAIL_URL'],
-                    'slack' => ['LOG_SLACK_WEBHOOK_URL'],
+                ...match ($transport) {
+                    'postmark' => ['POSTMARK_API_KEY', 'POSTMARK_TOKEN'],
+                    'resend' => ['RESEND_API_KEY', 'RESEND_KEY'],
                     default => [],
                 },
             ];
         }
 
-        return $this->mergeVariables(
-            $this->exceptVariables($variables, [
-                'LOG_SLACK_WEBHOOK_URL',
-                'LOG_STDERR_FORMATTER',
-                'PAPERTRAIL_PORT',
-                'PAPERTRAIL_URL',
-            ]),
-            $this->selectedVariables($variables, $required),
-        );
-    }
-
-    /**
-     * Get required environment variables from Laravel's mail configuration.
-     *
-     * @return list<string>
-     */
-    private function mailConfigurationVariables(string $file): array
-    {
-        return $this->exceptVariables($this->genericConfigurationVariables($file), [
-            'MAIL_LOG_CHANNEL',
-            'MAIL_PASSWORD',
-            'MAIL_SCHEME',
-            'MAIL_URL',
-            'MAIL_USERNAME',
-        ]);
-    }
-
-    /**
-     * Get required environment variables from Laravel's queue configuration.
-     *
-     * @return list<string>
-     */
-    private function queueConfigurationVariables(string $file): array
-    {
-        $variables = $this->genericConfigurationVariables($file);
-        $required = [];
-
-        if ($this->configuredString('queue.default', 'database') === 'sqs'
-            && config('queue.connections.sqs.overflow.enabled') === true) {
-            $required[] = 'SQS_OVERFLOW_STORE';
-        }
-
-        return $this->mergeVariables(
-            $this->exceptVariables($variables, [
-                'AWS_ACCESS_KEY_ID',
-                'DB_QUEUE_CONNECTION',
-                'SQS_OVERFLOW_STORE',
-                'SQS_SUFFIX',
-                'AWS_SECRET_ACCESS_KEY',
-            ]),
-            $this->selectedVariables($variables, $required),
-        );
-    }
-
-    /**
-     * Get required environment variables from Laravel's services configuration.
-     *
-     * @return list<string>
-     */
-    private function servicesConfigurationVariables(string $file): array
-    {
-        $variables = $this->genericConfigurationVariables($file);
-        $transport = $this->defaultMailTransport();
-
-        return $this->mergeVariables(
-            $this->exceptVariables($variables, [
-                'AWS_ACCESS_KEY_ID',
-                'AWS_SECRET_ACCESS_KEY',
-                'GOOGLE_CLIENT_ID',
-                'GOOGLE_CLIENT_SECRET',
-                'POSTMARK_TOKEN',
-                'RESEND_KEY',
-                'SLACK_BOT_USER_DEFAULT_CHANNEL',
-                'SLACK_BOT_USER_OAUTH_TOKEN',
-            ]),
-            $this->selectedVariables($variables, match ($transport) {
-                'postmark' => ['POSTMARK_TOKEN'],
-                'resend' => ['RESEND_KEY'],
-                default => [],
-            }),
-        );
-    }
-
-    /**
-     * Get required environment variables from Laravel's session configuration.
-     *
-     * @return list<string>
-     */
-    private function sessionConfigurationVariables(string $file): array
-    {
-        return $this->exceptVariables($this->genericConfigurationVariables($file), [
-            'SESSION_CONNECTION',
-            'SESSION_DOMAIN',
-            'SESSION_SECURE_COOKIE',
-            'SESSION_STORE',
-        ]);
+        return $this->mergeVariables($required);
     }
 
     /**
@@ -366,6 +351,16 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
         }
 
         return array_values(array_unique($variables));
+    }
+
+    /**
+     * Resolve the driver of the configured default connection, falling back to its name.
+     */
+    private function activeDriver(string $connections, string $default, string $fallback): string
+    {
+        $name = $this->configuredString($default, $fallback);
+
+        return $this->configuredString("{$connections}.{$name}.driver", $name);
     }
 
     /**
@@ -404,6 +399,41 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
     }
 
     /**
+     * Get the transports used by a mailer.
+     *
+     * @param  list<string>  $seen
+     * @return list<string>
+     */
+    private function activeMailTransports(string $mailer, array $seen = []): array
+    {
+        if (in_array($mailer, $seen, true)) {
+            return [];
+        }
+
+        $transport = $this->configuredString("mail.mailers.{$mailer}.transport", $mailer);
+
+        if (! in_array($transport, ['failover', 'roundrobin'], true)) {
+            return [$transport];
+        }
+
+        $mailers = config("mail.mailers.{$mailer}.mailers");
+
+        if (! is_array($mailers)) {
+            return [];
+        }
+
+        $transports = [];
+
+        foreach ($mailers as $nested) {
+            if (is_string($nested) && $nested !== '') {
+                $transports = [...$transports, ...$this->activeMailTransports($nested, [...$seen, $mailer])];
+            }
+        }
+
+        return array_values(array_unique($transports));
+    }
+
+    /**
      * Get a string configuration value with a fallback.
      */
     private function configuredString(string $key, string $default): string
@@ -411,16 +441,6 @@ class DefaultConfigurationEnvironmentVariablesAreDefined extends Diagnostic
         $value = config($key);
 
         return is_string($value) && $value !== '' ? $value : $default;
-    }
-
-    /**
-     * Get the transport used by the default mailer.
-     */
-    private function defaultMailTransport(): string
-    {
-        $mailer = $this->configuredString('mail.default', 'log');
-
-        return $this->configuredString("mail.mailers.{$mailer}.transport", $mailer);
     }
 
     /**
