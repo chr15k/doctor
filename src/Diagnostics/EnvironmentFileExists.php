@@ -2,12 +2,12 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
+use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Outcome;
-use Laravel\Doctor\Support\EnvironmentVariables;
 
 class EnvironmentFileExists extends Diagnostic implements Fixable
 {
@@ -45,7 +45,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
      */
     public function check(): DiagnosticResult
     {
-        if ((new EnvironmentVariables)->files() !== []) {
+        if ($this->environmentFiles() !== []) {
             return $this->result('exists');
         }
 
@@ -78,5 +78,19 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
 
         return $this->fixResult('created')
             ->withDetails('Review .env and run `php artisan key:generate` if APP_KEY is empty.');
+    }
+
+    /**
+     * Get the application's environment files.
+     *
+     * @return list<string>
+     */
+    private function environmentFiles(): array
+    {
+        return array_values(array_filter(
+            File::glob(base_path('.env*')) ?: [],
+            static fn (string $file): bool => is_file($file)
+                && ! str_ends_with(basename($file), '.example'),
+        ));
     }
 }

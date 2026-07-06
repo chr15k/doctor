@@ -14,7 +14,6 @@ use Laravel\Doctor\Diagnostics\ConfigurationFilesCanBeLoaded;
 use Laravel\Doctor\Diagnostics\DatabaseConnectionIsReachable;
 use Laravel\Doctor\Diagnostics\DatabaseTimezoneMatchesApplication;
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
-use Laravel\Doctor\Diagnostics\DefaultConfigurationEnvironmentVariablesAreDefined;
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
 use Laravel\Doctor\Diagnostics\FilesystemDisksAreReachable;
@@ -25,6 +24,7 @@ use Laravel\Doctor\Diagnostics\QueueConnectionIsAsynchronous;
 use Laravel\Doctor\Diagnostics\QueueConnectionIsReachable;
 use Laravel\Doctor\Diagnostics\RecommendedPhpExtensionsAreLoaded;
 use Laravel\Doctor\Diagnostics\RedisConnectionsAreReachable;
+use Laravel\Doctor\Diagnostics\RequiredConfigurationValuesAreSet;
 use Laravel\Doctor\Diagnostics\RequiredPhpExtensionsAreLoaded;
 use Laravel\Doctor\Diagnostics\ScheduledTasksRequireScheduler;
 use Laravel\Doctor\Diagnostics\SessionDriverIsReachable;
@@ -422,7 +422,7 @@ it('binds the doctor service and facade', function (): void {
             ComposerLockIsFresh::class,
             ConfigurationFilesCanBeLoaded::class,
             ConfigurationCanBeCached::class,
-            DefaultConfigurationEnvironmentVariablesAreDefined::class,
+            RequiredConfigurationValuesAreSet::class,
             BootstrapCacheMatchesEnvironment::class,
             DatabaseConnectionIsReachable::class,
             DatabaseTimezoneMatchesApplication::class,
@@ -457,7 +457,7 @@ it('registers the default diagnostics', function (): void {
             ComposerLockIsFresh::class,
             ConfigurationFilesCanBeLoaded::class,
             ConfigurationCanBeCached::class,
-            DefaultConfigurationEnvironmentVariablesAreDefined::class,
+            RequiredConfigurationValuesAreSet::class,
             BootstrapCacheMatchesEnvironment::class,
             DatabaseConnectionIsReachable::class,
             DatabaseTimezoneMatchesApplication::class,
