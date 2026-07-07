@@ -2,6 +2,7 @@
 
 use Illuminate\Console\Command;
 use Laravel\Doctor\Contracts\Fixable;
+use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\DiagnosticSource;
@@ -11,6 +12,7 @@ use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\DatabaseDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\DefaultMetadataDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\NoticeDiagnostic;
@@ -56,6 +58,31 @@ it('runs registered diagnostics', function (): void {
         ->and($report->hasWarnings())->toBeTrue()
         ->and($report->hasFailures())->toBeFalse()
         ->and($report->diagnostics()[1]->result->remediation)->toBe('Re-run this diagnostic after addressing the warning.');
+});
+
+it('runs diagnostics in first-seen group order', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostics([
+        PassingDiagnostic::class,
+        DatabaseDiagnostic::class,
+        WarningDiagnostic::class,
+    ]);
+
+    $groups = $doctor->selectedByGroup();
+    $expected = [
+        PassingDiagnostic::class,
+        WarningDiagnostic::class,
+        DatabaseDiagnostic::class,
+    ];
+
+    expect(array_keys($groups))->toBe(['testing', 'database'])
+        ->and(array_map(
+            static fn (Diagnostic $diagnostic): string => $diagnostic::class,
+            [...$groups['testing'], ...$groups['database']],
+        ))->toBe($expected)
+        ->and(array_map(
+            static fn (DiagnosticOutcome $outcome): string => $outcome->diagnostic::class,
+            $doctor->run()->diagnostics(),
+        ))->toBe($expected);
 });
 
 it('does not treat notices as warnings', function (): void {

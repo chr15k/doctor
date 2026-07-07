@@ -92,8 +92,10 @@ class Doctor
     {
         $outcomes = [];
 
-        foreach ($this->selected($selection) as $diagnostic) {
-            $outcomes[] = $this->check($diagnostic);
+        foreach ($this->selectedByGroup($selection) as $diagnostics) {
+            foreach ($diagnostics as $diagnostic) {
+                $outcomes[] = $this->check($diagnostic);
+            }
         }
 
         return new DiagnosticReport($outcomes);
@@ -148,8 +150,6 @@ class Doctor
         foreach ($this->selected($selection) as $diagnostic) {
             $groups[$diagnostic->group][] = $diagnostic;
         }
-
-        ksort($groups);
 
         return $groups;
     }
