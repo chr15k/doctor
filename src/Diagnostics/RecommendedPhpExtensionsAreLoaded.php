@@ -14,6 +14,14 @@ class RecommendedPhpExtensionsAreLoaded extends Diagnostic
     public string $group = 'environment';
 
     /**
+     * Create a new diagnostic instance.
+     */
+    public function __construct(protected ComposerJson $composer)
+    {
+        parent::__construct();
+    }
+
+    /**
      * Get the diagnostic's named message definitions.
      *
      * @return array<string, string|Message>
@@ -35,7 +43,7 @@ class RecommendedPhpExtensionsAreLoaded extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $extensions = $this->composer()->suggestedExtensions();
+        $extensions = $this->composer->suggestedExtensions();
 
         if ($extensions === []) {
             return $this->pass('none-declared');
@@ -76,13 +84,5 @@ class RecommendedPhpExtensionsAreLoaded extends Diagnostic
             static fn (string $extension): string => '- ext-'.$extension,
             $extensions,
         ));
-    }
-
-    /**
-     * Get the Composer manifest reader.
-     */
-    private function composer(): ComposerJson
-    {
-        return new ComposerJson;
     }
 }

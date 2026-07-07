@@ -2,8 +2,19 @@
 
 namespace Laravel\Doctor\Results;
 
-class DiagnosticReport
+use Illuminate\Contracts\Support\Arrayable;
+use JsonSerializable;
+
+/**
+ * @implements Arrayable<string, mixed>
+ */
+class DiagnosticReport implements Arrayable, JsonSerializable
 {
+    /**
+     * The version of the report's machine-readable payload.
+     */
+    public const VERSION = 1;
+
     /**
      * Create a new diagnostic report instance.
      *
@@ -73,17 +84,51 @@ class DiagnosticReport
     public function hasWarnings(): bool
     {
         foreach ($this->diagnostics as $outcome) {
-            if ($outcome->result->status === Status::Warn || $outcome->result->status->failed()) {
+            if ($outcome->result->status === Status::Warn) {
                 return true;
             }
         }
 
         foreach ($this->fixes as $outcome) {
-            if ($outcome->result->status === Status::Warn || $outcome->result->status->failed()) {
+            if ($outcome->result->status === Status::Warn) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Get the array representation of the report.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'version' => self::VERSION,
+            'diagnostics' => array_map(
+                static fn (DiagnosticOutcome $outcome): array => $outcome->toArray(),
+                $this->diagnostics,
+            ),
+            'fixes' => array_map(
+                static fn (DiagnosticFixOutcome $outcome): array => $outcome->toArray(),
+                $this->fixes,
+            ),
+        ];
+    }
+
+    /**
+     * Get the JSON representation of the report.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return [
+            'version' => self::VERSION,
+            'diagnostics' => $this->diagnostics,
+            'fixes' => $this->fixes,
+        ];
     }
 }

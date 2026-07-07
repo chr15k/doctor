@@ -9,21 +9,21 @@ class DiagnosticSelection
      *
      * @var list<string>
      */
-    public array $only = [];
+    public readonly array $only;
 
     /**
      * The normalized selectors diagnostics must not match.
      *
      * @var list<string>
      */
-    public array $except = [];
+    public readonly array $except;
 
     /**
      * The normalized only constraints that must all match.
      *
      * @var list<list<string>>
      */
-    protected array $onlyConstraints = [];
+    protected readonly array $onlyConstraints;
 
     /**
      * Create a new diagnostic selection instance.
@@ -40,17 +40,21 @@ class DiagnosticSelection
         $this->only = self::normalize($only);
         $this->except = self::normalize($except);
 
+        $constraints = [];
+
         foreach ($onlyConstraints as $constraint) {
             $normalized = self::normalize($constraint);
 
             if ($normalized !== []) {
-                $this->onlyConstraints[] = $normalized;
+                $constraints[] = $normalized;
             }
         }
 
-        if ($this->onlyConstraints === [] && $this->only !== []) {
-            $this->onlyConstraints[] = $this->only;
+        if ($constraints === [] && $this->only !== []) {
+            $constraints[] = $this->only;
         }
+
+        $this->onlyConstraints = $constraints;
     }
 
     /**

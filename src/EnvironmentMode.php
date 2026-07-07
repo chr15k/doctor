@@ -2,6 +2,8 @@
 
 namespace Laravel\Doctor;
 
+use InvalidArgumentException;
+
 enum EnvironmentMode: string
 {
     case Local = 'local';
@@ -22,9 +24,21 @@ enum EnvironmentMode: string
     {
         $mode = config()->array('doctor.environments', [])[$environment] ?? null;
 
-        return is_string($mode)
-            ? (self::tryFrom($mode) ?? self::Production)
-            : self::Production;
+        if ($mode === null) {
+            return self::Production;
+        }
+
+        $resolved = is_string($mode) ? self::tryFrom($mode) : null;
+
+        if ($resolved === null) {
+            throw new InvalidArgumentException(sprintf(
+                'Invalid Doctor environment mode [%s] configured for the [%s] environment.',
+                is_string($mode) ? $mode : get_debug_type($mode),
+                $environment,
+            ));
+        }
+
+        return $resolved;
     }
 
     /**

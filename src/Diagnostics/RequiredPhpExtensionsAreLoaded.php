@@ -14,6 +14,14 @@ class RequiredPhpExtensionsAreLoaded extends Diagnostic
     public string $group = 'environment';
 
     /**
+     * Create a new diagnostic instance.
+     */
+    public function __construct(protected ComposerJson $composer)
+    {
+        parent::__construct();
+    }
+
+    /**
      * Get the diagnostic's named message definitions.
      *
      * @return array<string, string|Message>
@@ -35,14 +43,12 @@ class RequiredPhpExtensionsAreLoaded extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $composer = new ComposerJson;
-
-        if ($composer->contents() === null) {
+        if ($this->composer->contents() === null) {
             return $this->skip('composer-unreadable');
         }
 
         $missing = array_values(array_filter(
-            $composer->requiredExtensions(),
+            $this->composer->requiredExtensions(),
             static fn (string $extension): bool => ! extension_loaded($extension),
         ));
 

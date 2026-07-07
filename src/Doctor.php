@@ -189,13 +189,14 @@ class Doctor
                 continue;
             }
 
-            if ($diagnostic->application()) {
+            if (DiagnosticSource::for($diagnostic)->application) {
                 $application[] = $diagnostic;
             } else {
                 $packages[] = $diagnostic;
             }
         }
 
-        return [...$application, ...$packages];
+        // Package diagnostics run first so application diagnostics may build on a verified foundation...
+        return [...$packages, ...$application];
     }
 }

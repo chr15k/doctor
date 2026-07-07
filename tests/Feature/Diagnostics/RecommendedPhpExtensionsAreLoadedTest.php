@@ -21,7 +21,7 @@ it('warns about missing Composer-suggested PHP extensions', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new RecommendedPhpExtensionsAreLoaded)->check();
+    $result = $this->app->make(RecommendedPhpExtensionsAreLoaded::class)->check();
 
     expect($result->status->value)->toBe('warn')
         ->and($result->details)->toContain('ext-laravel_doctor_recommended_extension');

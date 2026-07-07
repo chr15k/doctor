@@ -15,6 +15,14 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
     public string $group = 'environment';
 
     /**
+     * Create a new diagnostic instance.
+     */
+    public function __construct(protected ComposerJson $composer)
+    {
+        parent::__construct();
+    }
+
+    /**
      * Get the diagnostic's named message definitions.
      *
      * @return array<string, string|Message>
@@ -36,7 +44,7 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $constraint = (new ComposerJson)->phpConstraint();
+        $constraint = $this->composer->phpConstraint();
 
         if ($constraint === null) {
             return $this->skip('constraint-missing');

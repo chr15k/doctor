@@ -21,7 +21,7 @@ it('reports missing Composer-required PHP extensions', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new RequiredPhpExtensionsAreLoaded)->check();
+    $result = $this->app->make(RequiredPhpExtensionsAreLoaded::class)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('ext-laravel_doctor_missing_extension');

@@ -237,37 +237,6 @@ abstract class Diagnostic
      */
     public function package(): ?string
     {
-        return $this->diagnosticSource()->package;
-    }
-
-    /**
-     * Get the user-facing diagnostic source label.
-     */
-    public function source(): string
-    {
-        return $this->package() ?? 'application';
-    }
-
-    /**
-     * Determine whether the diagnostic belongs to the application source.
-     */
-    public function application(): bool
-    {
-        $source = $this->diagnosticSource();
-
-        // A diagnostic may override package() to claim a different source...
-        if ($this->package() !== $source->package) {
-            return $this->package() === null;
-        }
-
-        return $source->application;
-    }
-
-    /**
-     * Get the resolved diagnostic source metadata.
-     */
-    public function diagnosticSource(): DiagnosticSource
-    {
-        return DiagnosticSource::resolve(static::class);
+        return DiagnosticSource::resolve(static::class)->package;
     }
 }

@@ -33,6 +33,7 @@ use Laravel\Doctor\Diagnostics\ScheduledTasksRequireScheduler;
 use Laravel\Doctor\Diagnostics\SessionDriverIsReachable;
 use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
+use Laravel\Doctor\Support\ComposerJson;
 
 class DoctorServiceProvider extends ServiceProvider
 {
@@ -42,6 +43,8 @@ class DoctorServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/doctor.php', 'doctor');
+
+        $this->app->singleton(ComposerJson::class);
 
         $this->app->singleton(Doctor::class, function (Application $app): Doctor {
             return (new Doctor($app))->diagnostics([

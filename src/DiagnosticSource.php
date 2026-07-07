@@ -40,6 +40,34 @@ class DiagnosticSource
     }
 
     /**
+     * Resolve the source metadata for the given diagnostic instance.
+     */
+    public static function for(Diagnostic $diagnostic): self
+    {
+        $source = self::resolve($diagnostic::class);
+
+        // A diagnostic may override package() to claim a different source...
+        if ($diagnostic->package() !== $source->package) {
+            return new self(
+                package: $diagnostic->package(),
+                file: $source->file,
+                relativeFile: $source->relativeFile,
+                application: $diagnostic->package() === null,
+            );
+        }
+
+        return $source;
+    }
+
+    /**
+     * Get the user-facing source label.
+     */
+    public function label(): string
+    {
+        return $this->package ?? 'application';
+    }
+
+    /**
      * Resolve the source metadata for the given diagnostic class.
      *
      * @param  class-string  $class

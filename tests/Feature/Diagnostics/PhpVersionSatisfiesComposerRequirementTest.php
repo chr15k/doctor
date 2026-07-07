@@ -21,7 +21,7 @@ it('reports when PHP does not satisfy composer.json', function (): void {
 
     $this->app->setBasePath($basePath);
 
-    $result = (new PhpVersionSatisfiesComposerRequirement)->check();
+    $result = $this->app->make(PhpVersionSatisfiesComposerRequirement::class)->check();
 
     expect($result->status->value)->toBe('fail')
         ->and($result->summary)->toBe(sprintf('PHP %s does not satisfy [<1.0].', PHP_VERSION))

@@ -142,7 +142,7 @@ class DoctorCommand extends Command
     {
         $report = $doctor->run($selection);
 
-        $this->line($this->jsonReport($report->diagnostics()));
+        $this->line(json_encode($report, JSON_THROW_ON_ERROR));
 
         return $this->exitCode($report, $failOn);
     }
@@ -156,7 +156,9 @@ class DoctorCommand extends Command
     {
         $report = $doctor->run($selection);
 
-        $this->githubReport($report->diagnostics());
+        foreach ((new GithubRenderer)->annotations($report) as $annotation) {
+            $this->line($annotation);
+        }
 
         return $this->exitCode($report, $failOn);
     }
@@ -316,7 +318,7 @@ class DoctorCommand extends Command
                 '[%s] %s (%s): %s',
                 $outcome->result->status->value,
                 $outcome->diagnostic->name,
-                $outcome->diagnostic->source(),
+                $outcome->source()->label(),
                 $outcome->result->summary,
             ));
 
@@ -406,7 +408,7 @@ class DoctorCommand extends Command
             label: $outcome->diagnostic->name,
             content: $this->diagnosticCalloutContent($outcome),
             type: $outcome->result->status === Status::Warn ? 'warning' : 'error',
-            info: $outcome->diagnostic->source(),
+            info: $outcome->source()->label(),
         );
     }
 
@@ -447,7 +449,7 @@ class DoctorCommand extends Command
         $grouped = [];
 
         foreach ($notices as $notice) {
-            $grouped[$notice->diagnostic->source()][] = $notice;
+            $grouped[$notice->source()->label()][] = $notice;
         }
 
         return $grouped;
@@ -544,7 +546,7 @@ class DoctorCommand extends Command
         $grouped = [];
 
         foreach ($fixes as $fix) {
-            $grouped[$fix->diagnostic->source()][] = $fix;
+            $grouped[$fix->source()->label()][] = $fix;
         }
 
         return $grouped;
@@ -648,7 +650,7 @@ class DoctorCommand extends Command
             label: $outcome->diagnostic->name,
             content: $this->fixConfirmationCalloutContent($outcome),
             type: $outcome->result->status === Status::Warn ? 'warning' : 'error',
-            info: $outcome->diagnostic->source(),
+            info: $outcome->source()->label(),
         );
     }
 
@@ -681,101 +683,6 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Render diagnostics as JSON.
-     *
-     * @param  list<DiagnosticOutcome>  $diagnostics
-     */
-    protected function jsonReport(array $diagnostics): string
-    {
-        return json_encode([
-            'version' => 1,
-            'diagnostics' => array_map(
-                fn (DiagnosticOutcome $outcome) => [
-                    'class' => $outcome->diagnostic::class,
-                    'group' => $outcome->diagnostic->group,
-                    'name' => $outcome->diagnostic->name,
-                    'source' => $this->jsonSource($outcome),
-                    'code' => $outcome->result->code,
-                    'status' => $outcome->result->status->value,
-                    'summary' => $outcome->result->summary,
-                    'details' => $outcome->result->details,
-                    'remediation' => $outcome->result->remediation,
-                    'links' => (object) $outcome->result->links,
-                ],
-                $diagnostics,
-            ),
-        ], JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * Render diagnostics as GitHub Actions annotations.
-     *
-     * @param  list<DiagnosticOutcome>  $diagnostics
-     */
-    protected function githubReport(array $diagnostics): void
-    {
-        foreach ($diagnostics as $outcome) {
-            if ($outcome->result->status === Status::Pass || $outcome->result->status === Status::Skip) {
-                continue;
-            }
-
-            $level = $outcome->result->status === Status::Notice ? 'notice' : ($outcome->result->status === Status::Warn ? 'warning' : 'error');
-
-            $this->line(sprintf(
-                '::%s title=%s::%s',
-                $level,
-                $this->escapeGithubCommandProperty($this->githubTitle($outcome)),
-                $this->escapeGithubCommandData($this->githubSummary($outcome)),
-            ));
-        }
-    }
-
-    /**
-     * Build a JSON source payload.
-     *
-     * @return array{label: string, package: string|null, file: string|null, application: bool}
-     */
-    protected function jsonSource(DiagnosticOutcome $outcome): array
-    {
-        return [
-            'label' => $outcome->diagnostic->source(),
-            'package' => $outcome->diagnostic->package(),
-            'file' => $outcome->diagnostic->diagnosticSource()->relativeFile,
-            'application' => $outcome->diagnostic->application(),
-        ];
-    }
-
-    /**
-     * Build a GitHub annotation title.
-     */
-    protected function githubTitle(DiagnosticOutcome $outcome): string
-    {
-        return sprintf('%s (%s)', $outcome->diagnostic->name, $outcome->diagnostic->source());
-    }
-
-    /**
-     * Build a GitHub annotation summary.
-     */
-    protected function githubSummary(DiagnosticOutcome $outcome): string
-    {
-        $parts = [$outcome->result->summary];
-
-        if ($outcome->result->details !== null) {
-            $parts[] = $outcome->result->details;
-        }
-
-        if ($outcome->result->remediation !== null) {
-            $parts[] = $outcome->result->remediation;
-        }
-
-        foreach ($outcome->result->links as $label => $url) {
-            $parts[] = sprintf('%s: %s', $label, $url);
-        }
-
-        return implode(' ', $parts);
-    }
-
-    /**
      * Determine the command exit code for the report.
      *
      * @param  'fail'|'warn'|'never'  $failOn
@@ -787,33 +694,9 @@ class DoctorCommand extends Command
         }
 
         if ($failOn === Status::Warn->value) {
-            return $report->hasWarnings() ? self::FAILURE : self::SUCCESS;
+            return $report->hasFailures() || $report->hasWarnings() ? self::FAILURE : self::SUCCESS;
         }
 
         return $report->hasFailures() ? self::FAILURE : self::SUCCESS;
-    }
-
-    /**
-     * Escape a GitHub workflow command property value.
-     */
-    protected function escapeGithubCommandProperty(string $value): string
-    {
-        return str_replace(
-            ['%', "\r", "\n", ':', ','],
-            ['%25', '%0D', '%0A', '%3A', '%2C'],
-            $value,
-        );
-    }
-
-    /**
-     * Escape a GitHub workflow command message body.
-     */
-    protected function escapeGithubCommandData(string $value): string
-    {
-        return str_replace(
-            ['%', "\r", "\n"],
-            ['%25', '%0D', '%0A'],
-            $value,
-        );
     }
 }

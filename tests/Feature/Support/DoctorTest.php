@@ -41,9 +41,11 @@ it('resolves diagnostic sources from the class file', function (): void {
         ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->relativeFile)->toBe('tests/Fixtures/Diagnostics/PassingDiagnostic.php')
         ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->application)->toBeTrue()
         ->and(DiagnosticSource::resolve(ApplicationKeyIsSet::class)->application)->toBeFalse()
-        ->and((new PassingDiagnostic)->source())->toBe('laravel/doctor')
+        ->and(DiagnosticSource::for(new PassingDiagnostic)->label())->toBe('laravel/doctor')
         ->and((new PassingDiagnostic)->package())->toBe('laravel/doctor')
-        ->and((new PassingDiagnostic)->application())->toBeTrue();
+        ->and(DiagnosticSource::for(new PassingDiagnostic)->application)->toBeTrue()
+        ->and(DiagnosticSource::for(new PackagedDiagnostic)->label())->toBe('vendor/package')
+        ->and(DiagnosticSource::for(new PackagedDiagnostic)->application)->toBeFalse();
 });
 
 it('runs registered diagnostics', function (): void {
@@ -102,17 +104,17 @@ it('defaults diagnostic metadata from the class name', function (): void {
         ->and($diagnostic->group)->toBe('default-metadata-diagnostic');
 });
 
-it('runs application diagnostics before package diagnostics', function (): void {
+it('runs package diagnostics before application diagnostics', function (): void {
     $doctor = (new Doctor($this->app))->diagnostics([
-        PackagedDiagnostic::class,
         PassingDiagnostic::class,
+        PackagedDiagnostic::class,
     ]);
 
     $report = $doctor->run();
 
     expect($report->diagnostics())->toHaveCount(2)
-        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class)
-        ->and($report->diagnostics()[1]->diagnostic::class)->toBe(PackagedDiagnostic::class);
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PackagedDiagnostic::class)
+        ->and($report->diagnostics()[1]->diagnostic::class)->toBe(PassingDiagnostic::class);
 });
 
 it('converts diagnostic exceptions into error results', function (): void {
