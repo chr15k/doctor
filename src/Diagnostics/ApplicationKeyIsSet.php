@@ -9,6 +9,7 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
@@ -75,9 +76,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
 
     private function applicationCipher(): string
     {
-        $cipher = config()->string('app.cipher', '');
-
-        return $cipher === '' ? 'AES-256-CBC' : $cipher;
+        return Configured::string('app.cipher', 'AES-256-CBC');
     }
 
     private function writeKeyToEnvironmentFile(string $key): bool

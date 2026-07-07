@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Redis;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 use Laravel\Doctor\Support\Details;
 use Throwable;
 
@@ -80,9 +81,9 @@ class RedisConnectionsAreReachable extends Diagnostic
      */
     private function cacheConnection(): ?string
     {
-        $store = config()->string('cache.default', '');
+        $store = Configured::string('cache.default');
 
-        if ($store === '') {
+        if ($store === null) {
             return null;
         }
 
@@ -100,9 +101,9 @@ class RedisConnectionsAreReachable extends Diagnostic
      */
     private function queueConnection(): ?string
     {
-        $connection = config()->string('queue.default', '');
+        $connection = Configured::string('queue.default');
 
-        if ($connection === '') {
+        if ($connection === null) {
             return null;
         }
 
@@ -124,7 +125,7 @@ class RedisConnectionsAreReachable extends Diagnostic
             return null;
         }
 
-        return $this->configuredConnection(config('session.connection'));
+        return Configured::string('session.connection', 'default');
     }
 
     /**

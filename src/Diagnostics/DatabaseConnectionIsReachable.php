@@ -7,6 +7,7 @@ use Illuminate\Support\ConfigurationUrlParser;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 use PDO;
 use Throwable;
 
@@ -41,9 +42,9 @@ class DatabaseConnectionIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $connection = config()->string('database.default', '');
+        $connection = Configured::string('database.default');
 
-        if ($connection === '') {
+        if ($connection === null) {
             return $this->skip('not-configured');
         }
 

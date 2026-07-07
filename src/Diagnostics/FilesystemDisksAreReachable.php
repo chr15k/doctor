@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 use RuntimeException;
 use Throwable;
 
@@ -38,9 +39,9 @@ class FilesystemDisksAreReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $disk = config()->string('filesystems.default', '');
+        $disk = Configured::string('filesystems.default');
 
-        if ($disk === '') {
+        if ($disk === null) {
             return $this->skip('not-configured');
         }
 

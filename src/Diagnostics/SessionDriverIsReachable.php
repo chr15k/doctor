@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 use RuntimeException;
 use Throwable;
 
@@ -40,9 +41,9 @@ class SessionDriverIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $driver = config()->string('session.driver', '');
+        $driver = Configured::string('session.driver');
 
-        if ($driver === '') {
+        if ($driver === null) {
             return $this->skip('not-configured');
         }
 
@@ -75,9 +76,9 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeFileSessions(): void
     {
-        $path = config()->string('session.files', '');
+        $path = Configured::string('session.files');
 
-        if ($path === '') {
+        if ($path === null) {
             throw new RuntimeException('The session file path is not configured.');
         }
 
@@ -91,7 +92,7 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeDatabaseSessions(): void
     {
-        $table = config()->string('session.table', 'sessions');
+        $table = Configured::string('session.table', 'sessions');
 
         if (! $this->schema()->hasTable($table)) {
             throw new RuntimeException(sprintf('The [%s] session table does not exist.', $table));
@@ -103,9 +104,7 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function probeRedisSessions(): void
     {
-        $connection = config('session.connection');
-
-        Redis::connection(is_string($connection) && $connection !== '' ? $connection : 'default')->ping();
+        Redis::connection(Configured::string('session.connection', 'default'))->ping();
     }
 
     /**
@@ -113,9 +112,7 @@ class SessionDriverIsReachable extends Diagnostic
      */
     private function schema(): Builder
     {
-        $connection = config('session.connection');
-
-        return Schema::connection(is_string($connection) && $connection !== '' ? $connection : null);
+        return Schema::connection(Configured::string('session.connection'));
     }
 
     /**

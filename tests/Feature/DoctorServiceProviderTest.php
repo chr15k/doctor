@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Console\OutputStyle;
 use Illuminate\Contracts\Console\Kernel;
+use Laravel\Doctor\Console\CliRenderer;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Diagnostics\ApplicationTimezoneIsValid;
@@ -12,7 +14,6 @@ use Laravel\Doctor\Diagnostics\ComposerLockIsFresh;
 use Laravel\Doctor\Diagnostics\ConfigurationCanBeCached;
 use Laravel\Doctor\Diagnostics\ConfigurationFilesCanBeLoaded;
 use Laravel\Doctor\Diagnostics\DatabaseConnectionIsReachable;
-use Laravel\Doctor\Diagnostics\DatabaseTimezoneMatchesApplication;
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
@@ -40,7 +41,9 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
 it('loads the package service provider', function (): void {
@@ -116,13 +119,16 @@ it('reruns diagnostics after applying fixes', function (): void {
 });
 
 it('formats interactive fix callouts without remediation or confirmation text', function (): void {
-    $command = new class extends DoctorCommand
+    $renderer = new class(new OutputStyle(new ArrayInput([]), new NullOutput)) extends CliRenderer
     {
         public function content(DiagnosticOutcome $outcome): array
         {
             return $this->fixConfirmationCalloutContent($outcome);
         }
+    };
 
+    $command = new class extends DoctorCommand
+    {
         public function prompt(DiagnosticOutcome $outcome): string
         {
             return $this->confirmationPrompt($outcome);
@@ -136,7 +142,7 @@ it('formats interactive fix callouts without remediation or confirmation text', 
             ->confirmUsing('Fix the testing diagnostic?'),
     );
 
-    expect($command->content($outcome))->toBe(['The diagnostic failed.'])
+    expect($renderer->content($outcome))->toBe(['The diagnostic failed.'])
         ->and($command->prompt($outcome))->toBe('Fix the testing diagnostic?');
 });
 
@@ -425,7 +431,6 @@ it('binds the doctor service and facade', function (): void {
             RequiredConfigurationValuesAreSet::class,
             BootstrapCacheMatchesEnvironment::class,
             DatabaseConnectionIsReachable::class,
-            DatabaseTimezoneMatchesApplication::class,
             SqliteDatabaseExists::class,
             MigrationsAreUpToDate::class,
             CacheStoreIsReachable::class,
@@ -460,7 +465,6 @@ it('registers the default diagnostics', function (): void {
             RequiredConfigurationValuesAreSet::class,
             BootstrapCacheMatchesEnvironment::class,
             DatabaseConnectionIsReachable::class,
-            DatabaseTimezoneMatchesApplication::class,
             SqliteDatabaseExists::class,
             MigrationsAreUpToDate::class,
             CacheStoreIsReachable::class,

@@ -8,6 +8,7 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 
 class SqliteDatabaseExists extends Diagnostic implements Fixable
 {
@@ -46,9 +47,9 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
             return $this->skip('not-sqlite');
         }
 
-        $database = config()->string('database.connections.sqlite.database', '');
+        $database = Configured::string('database.connections.sqlite.database');
 
-        if ($database === '' || $database === ':memory:') {
+        if ($database === null || $database === ':memory:') {
             return $this->skip('not-file');
         }
 

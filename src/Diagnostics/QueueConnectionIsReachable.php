@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 use RuntimeException;
 use Throwable;
 
@@ -40,9 +41,9 @@ class QueueConnectionIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $connection = config()->string('queue.default', '');
+        $connection = Configured::string('queue.default');
 
-        if ($connection === '') {
+        if ($connection === null) {
             return $this->skip('not-configured');
         }
 

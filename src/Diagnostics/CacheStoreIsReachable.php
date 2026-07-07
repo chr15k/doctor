@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Configured;
 use Throwable;
 
 class CacheStoreIsReachable extends Diagnostic
@@ -36,9 +37,9 @@ class CacheStoreIsReachable extends Diagnostic
      */
     public function check(): DiagnosticResult
     {
-        $store = config()->string('cache.default', '');
+        $store = Configured::string('cache.default');
 
-        if ($store === '') {
+        if ($store === null) {
             return $this->skip('not-configured');
         }
 

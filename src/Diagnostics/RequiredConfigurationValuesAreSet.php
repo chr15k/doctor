@@ -5,6 +5,8 @@ namespace Laravel\Doctor\Diagnostics;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\ActiveDrivers;
+use Laravel\Doctor\Support\Configured;
 use Laravel\Doctor\Support\Details;
 use Monolog\Handler\SyslogUdpHandler;
 
@@ -82,8 +84,8 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
      */
     private function broadcastingValues(): array
     {
-        $connection = $this->configuredString('broadcasting.default', 'null');
-        $driver = $this->configuredString("broadcasting.connections.{$connection}.driver", $connection);
+        $connection = Configured::string('broadcasting.default', 'null');
+        $driver = Configured::string("broadcasting.connections.{$connection}.driver", $connection);
 
         $keys = match ($driver) {
             'ably' => ['key'],
@@ -101,9 +103,9 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
      */
     private function filesystemValues(): array
     {
-        $disk = $this->configuredString('filesystems.default', 'local');
+        $disk = Configured::string('filesystems.default', 'local');
 
-        if ($this->configuredString("filesystems.disks.{$disk}.driver", $disk) !== 's3') {
+        if (Configured::string("filesystems.disks.{$disk}.driver", $disk) !== 's3') {
             return [];
         }
 
@@ -119,7 +121,7 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
     {
         $values = [];
 
-        foreach ($this->activeLogChannels($this->configuredString('logging.default', 'stack')) as $channel) {
+        foreach (ActiveDrivers::logChannels(Configured::string('logging.default', 'stack')) as $channel) {
             $values = [...$values, ...$this->logChannelValues($channel)];
         }
 
@@ -133,7 +135,7 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
      */
     private function logChannelValues(string $channel): array
     {
-        $driver = $this->configuredString("logging.channels.{$channel}.driver", $channel);
+        $driver = Configured::string("logging.channels.{$channel}.driver", $channel);
 
         if ($driver === 'slack') {
             return $this->values("logging.channels.{$channel}", ['url'], 'slack log channel');
@@ -155,7 +157,7 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
     {
         $values = [];
 
-        foreach ($this->activeMailers($this->configuredString('mail.default', 'log')) as $mailer) {
+        foreach (ActiveDrivers::mailers(Configured::string('mail.default', 'log')) as $mailer) {
             $values = [...$values, ...$this->mailerValues($mailer)];
         }
 
@@ -169,7 +171,7 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
      */
     private function mailerValues(string $mailer): array
     {
-        return match ($this->configuredString("mail.mailers.{$mailer}.transport", $mailer)) {
+        return match (Configured::string("mail.mailers.{$mailer}.transport", $mailer)) {
             'smtp' => $this->values("mail.mailers.{$mailer}", ['host'], 'smtp mailer'),
             'sendmail' => $this->values("mail.mailers.{$mailer}", ['path'], 'sendmail mailer'),
             'postmark' => $this->values('services.postmark', ['token'], 'postmark mailer'),
@@ -185,9 +187,9 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
      */
     private function queueValues(): array
     {
-        $connection = $this->configuredString('queue.default', 'database');
+        $connection = Configured::string('queue.default', 'database');
 
-        if ($this->configuredString("queue.connections.{$connection}.driver", $connection) !== 'sqs') {
+        if (Configured::string("queue.connections.{$connection}.driver", $connection) !== 'sqs') {
             return [];
         }
 
@@ -196,74 +198,6 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
         }
 
         return $this->values("queue.connections.{$connection}.overflow", ['store'], 'sqs queue overflow');
-    }
-
-    /**
-     * Get the concrete channels used by a logging channel.
-     *
-     * @param  list<string>  $seen
-     * @return list<string>
-     */
-    private function activeLogChannels(string $channel, array $seen = []): array
-    {
-        if (in_array($channel, $seen, true)) {
-            return [];
-        }
-
-        if (config("logging.channels.{$channel}.driver") !== 'stack') {
-            return [$channel];
-        }
-
-        $channels = config("logging.channels.{$channel}.channels");
-
-        if (! is_array($channels)) {
-            return [];
-        }
-
-        $active = [];
-
-        foreach ($channels as $nested) {
-            if (is_string($nested) && $nested !== '') {
-                $active = [...$active, ...$this->activeLogChannels($nested, [...$seen, $channel])];
-            }
-        }
-
-        return array_values(array_unique($active));
-    }
-
-    /**
-     * Get the concrete mailers used by a mailer.
-     *
-     * @param  list<string>  $seen
-     * @return list<string>
-     */
-    private function activeMailers(string $mailer, array $seen = []): array
-    {
-        if (in_array($mailer, $seen, true)) {
-            return [];
-        }
-
-        $transport = $this->configuredString("mail.mailers.{$mailer}.transport", $mailer);
-
-        if (! in_array($transport, ['failover', 'roundrobin'], true)) {
-            return [$mailer];
-        }
-
-        $mailers = config("mail.mailers.{$mailer}.mailers");
-
-        if (! is_array($mailers)) {
-            return [];
-        }
-
-        $active = [];
-
-        foreach ($mailers as $nested) {
-            if (is_string($nested) && $nested !== '') {
-                $active = [...$active, ...$this->activeMailers($nested, [...$seen, $mailer])];
-            }
-        }
-
-        return array_values(array_unique($active));
     }
 
     /**
@@ -296,16 +230,6 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
             is_array($value) => $value !== [],
             default => true,
         };
-    }
-
-    /**
-     * Get a string configuration value with a fallback.
-     */
-    private function configuredString(string $key, string $default): string
-    {
-        $value = config($key);
-
-        return is_string($value) && $value !== '' ? $value : $default;
     }
 
     /**

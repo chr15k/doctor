@@ -118,7 +118,7 @@ Doctor maps Laravel environment names to one of its supported modes:
 ],
 ```
 
-Any environment not listed is treated as `production`.
+Any environment not listed is treated as `production`. Mapping an environment to an unsupported mode throws an exception, since a misconfigured Doctor cannot be trusted to diagnose anything else.
 
 ## Default Diagnostics
 
@@ -127,7 +127,7 @@ Doctor ships with a focused suite of diagnostics that cover common configuration
 - **Environment** — `.env` presence, `APP_KEY`, PHP version, required and recommended PHP extensions, and timezone.
 - **Composer** — `vendor/autoload.php` exists, Composer can dump optimized autoload files, and `composer.lock` is present and fresh.
 - **Configuration** — configuration files can be loaded and cached, configuration values required by the active drivers are set, and bootstrap cache files are reported when their presence does not match the current environment.
-- **Database** — configured connections are reachable, the default connection timezone is compared with Laravel's timezone, the SQLite database file exists when needed, and pending migrations are reported.
+- **Database** — configured connections are reachable, the SQLite database file exists when needed, and pending migrations are reported.
 - **Cache, queue, scheduler, and session** — configured drivers are reachable, active Redis connections are checked, `sync` queues are flagged outside local environments, and registered scheduled tasks are surfaced as a notice.
 - **Storage** — configured disks are reachable, required directories are writable, and the `storage:link` symlink exists when expected.
 - **Security** — debug mode matches the environment, `.env` is ignored, and Composer dependencies are audited.

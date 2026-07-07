@@ -15,7 +15,6 @@ use Laravel\Doctor\Diagnostics\ComposerLockIsFresh;
 use Laravel\Doctor\Diagnostics\ConfigurationCanBeCached;
 use Laravel\Doctor\Diagnostics\ConfigurationFilesCanBeLoaded;
 use Laravel\Doctor\Diagnostics\DatabaseConnectionIsReachable;
-use Laravel\Doctor\Diagnostics\DatabaseTimezoneMatchesApplication;
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
@@ -61,7 +60,6 @@ class DoctorServiceProvider extends ServiceProvider
                 RequiredConfigurationValuesAreSet::class,
                 BootstrapCacheMatchesEnvironment::class,
                 DatabaseConnectionIsReachable::class,
-                DatabaseTimezoneMatchesApplication::class,
                 SqliteDatabaseExists::class,
                 MigrationsAreUpToDate::class,
                 CacheStoreIsReachable::class,
