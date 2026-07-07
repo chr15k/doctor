@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class DebugModeMatchesEnvironment extends Diagnostic
 {
@@ -14,18 +14,18 @@ class DebugModeMatchesEnvironment extends Diagnostic
     public string $group = 'security';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'enabled-in-production' => Outcome::fail(
+            'enabled-in-production' => Message::make(
                 summary: 'Laravel debug mode is enabled in production.',
                 remediation: 'Set APP_DEBUG=false in production.',
             ),
-            'matches' => Outcome::pass('Laravel debug mode matches the application environment.'),
+            'matches' => 'Laravel debug mode matches the application environment.',
         ];
     }
 
@@ -35,10 +35,10 @@ class DebugModeMatchesEnvironment extends Diagnostic
     public function check(): DiagnosticResult
     {
         if ($this->debugIsEnabledInProduction()) {
-            return $this->result('enabled-in-production');
+            return $this->fail('enabled-in-production');
         }
 
-        return $this->result('matches');
+        return $this->pass('matches');
     }
 
     /**

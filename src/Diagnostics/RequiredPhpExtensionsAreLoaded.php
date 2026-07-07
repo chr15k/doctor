@@ -4,7 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\ComposerJson;
 
 class RequiredPhpExtensionsAreLoaded extends Diagnostic
@@ -14,16 +14,16 @@ class RequiredPhpExtensionsAreLoaded extends Diagnostic
     public string $group = 'environment';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'composer-unreadable' => Outcome::skip('The application does not have a readable composer.json file.'),
-            'installed' => Outcome::pass('All Composer-required PHP extensions are installed.'),
-            'missing' => Outcome::fail(
+            'composer-unreadable' => 'The application does not have a readable composer.json file.',
+            'installed' => 'All Composer-required PHP extensions are installed.',
+            'missing' => Message::make(
                 summary: 'Some Composer-required PHP extensions are missing.',
                 remediation: 'Install the missing PHP extensions for the PHP binary running Laravel.',
             ),
@@ -38,7 +38,7 @@ class RequiredPhpExtensionsAreLoaded extends Diagnostic
         $composer = new ComposerJson;
 
         if ($composer->contents() === null) {
-            return $this->result('composer-unreadable');
+            return $this->skip('composer-unreadable');
         }
 
         $missing = array_values(array_filter(
@@ -47,10 +47,10 @@ class RequiredPhpExtensionsAreLoaded extends Diagnostic
         ));
 
         if ($missing === []) {
-            return $this->result('installed');
+            return $this->pass('installed');
         }
 
-        return $this->result('missing')
+        return $this->fail('missing')
             ->withDetails(implode(PHP_EOL, array_map(
                 static fn (string $extension): string => '- ext-'.$extension,
                 $missing,

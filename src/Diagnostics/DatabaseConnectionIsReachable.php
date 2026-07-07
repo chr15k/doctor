@@ -6,7 +6,7 @@ use Illuminate\Database\Connectors\ConnectionFactory;
 use Illuminate\Support\ConfigurationUrlParser;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use PDO;
 use Throwable;
 
@@ -19,20 +19,20 @@ class DatabaseConnectionIsReachable extends Diagnostic
     public string $group = 'database';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'not-configured' => Outcome::skip('Laravel does not have a default database connection configured.'),
-            'connection-missing' => Outcome::skip('The default database connection is not configured.'),
-            'unreachable' => Outcome::fail(
+            'not-configured' => 'Laravel does not have a default database connection configured.',
+            'connection-missing' => 'The default database connection [{connection}] is not configured.',
+            'unreachable' => Message::make(
                 summary: 'Laravel cannot connect to the default database connection.',
                 remediation: 'Check DB_CONNECTION and the database credentials in your environment file.',
             ),
-            'reachable' => Outcome::pass('Laravel can connect to the default database connection.'),
+            'reachable' => 'Laravel can connect to the default database connection.',
         ];
     }
 
@@ -44,24 +44,23 @@ class DatabaseConnectionIsReachable extends Diagnostic
         $connection = config()->string('database.default', '');
 
         if ($connection === '') {
-            return $this->result('not-configured');
+            return $this->skip('not-configured');
         }
 
         $configuration = $this->configuration($connection);
 
         if ($configuration === null) {
-            return $this->result('connection-missing')
-                ->withDetails(sprintf('The [%s] database connection is not configured.', $connection));
+            return $this->skip('connection-missing', ['connection' => $connection]);
         }
 
         try {
             $this->probe($connection, $configuration);
         } catch (Throwable $e) {
-            return $this->result('unreachable')
+            return $this->fail('unreachable')
                 ->withDetails($e->getMessage());
         }
 
-        return $this->result('reachable');
+        return $this->pass('reachable');
     }
 
     /**

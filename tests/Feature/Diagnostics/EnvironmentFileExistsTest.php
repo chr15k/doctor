@@ -87,7 +87,7 @@ it('does not overwrite an existing .env when fixed', function (): void {
         DiagnosticResult::fail('Laravel does not have an environment file.'),
     ));
 
-    expect($fix->result->status->value)->toBe('skip')
+    expect($fix->result->status->value)->toBe('pass')
         ->and(file_get_contents($basePath.'/.env'))->toBe("APP_NAME=Existing\n");
 });
 

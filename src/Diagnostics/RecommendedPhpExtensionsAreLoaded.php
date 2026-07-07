@@ -4,7 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\ComposerJson;
 
 class RecommendedPhpExtensionsAreLoaded extends Diagnostic
@@ -14,16 +14,16 @@ class RecommendedPhpExtensionsAreLoaded extends Diagnostic
     public string $group = 'environment';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'none-declared' => Outcome::pass('No Composer-suggested PHP extensions are declared.'),
-            'installed' => Outcome::pass('All Composer-suggested PHP extensions are installed.'),
-            'missing' => Outcome::warn(
+            'none-declared' => 'No Composer-suggested PHP extensions are declared.',
+            'installed' => 'All Composer-suggested PHP extensions are installed.',
+            'missing' => Message::make(
                 summary: 'Some Composer-suggested PHP extensions are missing.',
                 remediation: 'Install the missing PHP extensions when the related optional features are used.',
             ),
@@ -38,16 +38,16 @@ class RecommendedPhpExtensionsAreLoaded extends Diagnostic
         $extensions = $this->composer()->suggestedExtensions();
 
         if ($extensions === []) {
-            return $this->result('none-declared');
+            return $this->pass('none-declared');
         }
 
         $missing = $this->missingExtensions($extensions);
 
         if ($missing === []) {
-            return $this->result('installed');
+            return $this->pass('installed');
         }
 
-        return $this->result('missing')
+        return $this->warn('missing')
             ->withDetails($this->formatExtensions($missing));
     }
 

@@ -7,7 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class ComposerAutoloadIsValid extends Diagnostic implements Fixable
 {
@@ -16,23 +16,23 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
     public string $group = 'composer';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'composer-missing' => Outcome::skip('The application does not have a composer.json file.'),
-            'dependencies-missing' => Outcome::skip('Composer dependencies are not installed.'),
-            'valid' => Outcome::pass('Composer can generate optimized autoload files.'),
-            'invalid' => Outcome::fail(
+            'composer-missing' => 'The application does not have a composer.json file.',
+            'dependencies-missing' => 'Composer dependencies are not installed.',
+            'valid' => 'Composer can generate optimized autoload files.',
+            'invalid' => Message::make(
                 summary: 'Composer cannot generate valid autoload files.',
                 remediation: 'Regenerate Composer autoload files with `composer dump-autoload`.',
                 confirmation: 'Would you like Doctor to regenerate Composer autoload files using `composer dump-autoload`?',
             ),
-            'regeneration-failed' => Outcome::fail('Composer autoload files could not be regenerated.'),
-            'regenerated' => Outcome::pass('Composer autoload files were regenerated.'),
+            'regeneration-failed' => 'Composer autoload files could not be regenerated.',
+            'regenerated' => 'Composer autoload files were regenerated.',
         ];
     }
 
@@ -42,11 +42,11 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
     public function check(): DiagnosticResult
     {
         if (! is_file(base_path('composer.json'))) {
-            return $this->result('composer-missing');
+            return $this->skip('composer-missing');
         }
 
         if (! is_file(base_path('vendor/autoload.php'))) {
-            return $this->result('dependencies-missing');
+            return $this->skip('dependencies-missing');
         }
 
         $process = Process::path(base_path())->run([
@@ -60,10 +60,10 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
         ]);
 
         if ($process->successful()) {
-            return $this->result('valid');
+            return $this->pass('valid');
         }
 
-        return $this->result('invalid')
+        return $this->fail('invalid')
             ->withDetails(trim($process->errorOutput() !== '' ? $process->errorOutput() : $process->output()));
     }
 
@@ -82,10 +82,10 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
         ]);
 
         if (! $process->successful()) {
-            return $this->fixResult('regeneration-failed')
+            return $this->fixFailed('regeneration-failed')
                 ->withDetails(trim($process->errorOutput() !== '' ? $process->errorOutput() : $process->output()));
         }
 
-        return $this->fixResult('regenerated');
+        return $this->fixed('regenerated');
     }
 }

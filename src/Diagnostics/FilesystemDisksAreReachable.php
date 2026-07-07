@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use RuntimeException;
 use Throwable;
 
@@ -16,20 +16,20 @@ class FilesystemDisksAreReachable extends Diagnostic
     public string $group = 'storage';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'not-configured' => Outcome::skip('Laravel does not have a default filesystem disk configured.'),
-            'disk-missing' => Outcome::skip('The default filesystem disk is not configured.'),
-            'unreachable' => Outcome::fail(
+            'not-configured' => 'Laravel does not have a default filesystem disk configured.',
+            'disk-missing' => 'The default filesystem disk [{disk}] is not configured.',
+            'unreachable' => Message::make(
                 summary: 'Laravel cannot reach the default filesystem disk.',
                 remediation: 'Check filesystem disk roots, credentials, and network access.',
             ),
-            'reachable' => Outcome::pass('Laravel can reach the default filesystem disk.'),
+            'reachable' => 'Laravel can reach the default filesystem disk.',
         ];
     }
 
@@ -41,24 +41,23 @@ class FilesystemDisksAreReachable extends Diagnostic
         $disk = config()->string('filesystems.default', '');
 
         if ($disk === '') {
-            return $this->result('not-configured');
+            return $this->skip('not-configured');
         }
 
         $configuration = $this->configuration($disk);
 
         if ($configuration === null) {
-            return $this->result('disk-missing')
-                ->withDetails(sprintf('The [%s] filesystem disk is not configured.', $disk));
+            return $this->skip('disk-missing', ['disk' => $disk]);
         }
 
         try {
             $this->probe($disk, $configuration);
         } catch (Throwable $e) {
-            return $this->result('unreachable')
+            return $this->fail('unreachable')
                 ->withDetails($e->getMessage());
         }
 
-        return $this->result('reachable');
+        return $this->pass('reachable');
     }
 
     /**

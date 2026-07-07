@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class ScheduledTasksRequireScheduler extends Diagnostic
 {
@@ -14,15 +14,15 @@ class ScheduledTasksRequireScheduler extends Diagnostic
     public string $group = 'scheduler';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'no-tasks' => Outcome::pass('Laravel does not have scheduled tasks.'),
-            'tasks-registered' => Outcome::notice(
+            'no-tasks' => 'Laravel does not have scheduled tasks.',
+            'tasks-registered' => Message::make(
                 summary: 'Laravel has scheduled tasks.',
                 remediation: 'Make sure the scheduler is running with `php artisan schedule:run` every minute or `php artisan schedule:work` during development.',
             ),
@@ -35,9 +35,9 @@ class ScheduledTasksRequireScheduler extends Diagnostic
     public function check(): DiagnosticResult
     {
         if (app(Schedule::class)->events() === []) {
-            return $this->result('no-tasks');
+            return $this->pass('no-tasks');
         }
 
-        return $this->result('tasks-registered');
+        return $this->notice('tasks-registered');
     }
 }

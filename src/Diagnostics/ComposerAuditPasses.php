@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 
 class ComposerAuditPasses extends Diagnostic
@@ -16,23 +16,23 @@ class ComposerAuditPasses extends Diagnostic
     public string $group = 'security';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'lock-missing' => Outcome::skip('The application does not have a composer.lock file.'),
-            'vulnerable' => Outcome::fail(
+            'lock-missing' => 'The application does not have a composer.lock file.',
+            'vulnerable' => Message::make(
                 summary: 'Composer audit found vulnerable dependencies.',
                 remediation: 'Run `composer audit` and update or replace vulnerable dependencies.',
             ),
-            'audit-failed' => Outcome::fail(
+            'audit-failed' => Message::make(
                 summary: 'Composer audit could not be completed.',
                 remediation: 'Run `composer audit` locally and resolve the reported issue.',
             ),
-            'clean' => Outcome::pass('Composer audit did not find vulnerable dependencies.'),
+            'clean' => 'Composer audit did not find vulnerable dependencies.',
         ];
     }
 
@@ -42,7 +42,7 @@ class ComposerAuditPasses extends Diagnostic
     public function check(): DiagnosticResult
     {
         if (! is_file(base_path('composer.lock'))) {
-            return $this->result('lock-missing');
+            return $this->skip('lock-missing');
         }
 
         $process = Process::path(base_path())->timeout(10)->run([
@@ -55,7 +55,7 @@ class ComposerAuditPasses extends Diagnostic
         $advisories = $this->advisoryCount($process->output());
 
         if ($advisories > 0) {
-            return $this->result('vulnerable')
+            return $this->fail('vulnerable')
                 ->withDetails(sprintf(
                     '%d security %s %s reported.',
                     $advisories,
@@ -65,7 +65,7 @@ class ComposerAuditPasses extends Diagnostic
         }
 
         if (! $process->successful()) {
-            return $this->result('audit-failed')
+            return $this->fail('audit-failed')
                 ->withDetails(Details::processOutput(
                     $process->output(),
                     $process->errorOutput(),
@@ -73,7 +73,7 @@ class ComposerAuditPasses extends Diagnostic
                 ));
         }
 
-        return $this->result('clean');
+        return $this->pass('clean');
     }
 
     /**

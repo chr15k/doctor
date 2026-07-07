@@ -4,7 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 use Monolog\Handler\SyslogUdpHandler;
 
@@ -15,15 +15,15 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
     public string $group = 'configuration';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'set' => Outcome::pass('Every configuration value required by the active drivers is set.'),
-            'missing' => Outcome::fail(
+            'set' => 'Every configuration value required by the active drivers is set.',
+            'missing' => Message::make(
                 summary: 'Some configuration values required by the active drivers are not set.',
                 remediation: 'Set the missing configuration values, typically by defining their environment variables in the application environment.',
             ),
@@ -38,10 +38,10 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
         $missing = $this->missingValues();
 
         if ($missing === []) {
-            return $this->result('set');
+            return $this->pass('set');
         }
 
-        return $this->result('missing')
+        return $this->fail('missing')
             ->withDetails($this->formatMissingValues($missing));
     }
 

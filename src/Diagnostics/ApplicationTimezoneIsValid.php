@@ -4,7 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class ApplicationTimezoneIsValid extends Diagnostic
 {
@@ -13,20 +13,20 @@ class ApplicationTimezoneIsValid extends Diagnostic
     public string $group = 'environment';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'missing' => Outcome::fail(
+            'missing' => Message::make(
                 summary: 'Laravel does not have an application timezone configured.',
                 remediation: 'Set APP_TIMEZONE or app.timezone to a valid PHP timezone.',
             ),
-            'valid' => Outcome::pass('Laravel has a valid application timezone.'),
-            'invalid' => Outcome::fail(
-                summary: 'Laravel has an invalid application timezone.',
+            'valid' => 'Laravel has a valid application timezone.',
+            'invalid' => Message::make(
+                summary: 'The application timezone [{timezone}] is not a valid PHP timezone.',
                 remediation: 'Set app.timezone to one of PHP\'s supported timezone identifiers.',
             ),
         ];
@@ -40,15 +40,14 @@ class ApplicationTimezoneIsValid extends Diagnostic
         $timezone = config('app.timezone');
 
         if (! is_string($timezone) || $timezone === '') {
-            return $this->result('missing');
+            return $this->fail('missing');
         }
 
         if ($this->isValidTimezone($timezone)) {
-            return $this->result('valid');
+            return $this->pass('valid');
         }
 
-        return $this->result('invalid')
-            ->withDetails(sprintf('[%s] is not a valid PHP timezone.', $timezone));
+        return $this->fail('invalid', ['timezone' => $timezone]);
     }
 
     /**

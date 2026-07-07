@@ -8,7 +8,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
@@ -17,21 +17,21 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
     public string $group = 'environment';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'configured' => Outcome::pass('Laravel has an application key.'),
-            'missing' => Outcome::fail(
+            'configured' => 'Laravel has an application key.',
+            'missing' => Message::make(
                 summary: 'Laravel does not have an application key.',
                 remediation: 'Generate an application key with `php artisan key:generate`.',
                 confirmation: 'Would you like Doctor to generate an application key using `artisan key:generate`?',
             ),
-            'generated' => Outcome::pass('The application key was generated.'),
-            'generation-failed' => Outcome::fail('The application key could not be generated.'),
+            'generated' => 'The application key was generated.',
+            'generation-failed' => 'The application key could not be generated.',
         ];
     }
 
@@ -43,10 +43,10 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
         $key = config('app.key');
 
         if (is_string($key) && trim($key) !== '') {
-            return $this->result('configured');
+            return $this->pass('configured');
         }
 
-        return $this->result('missing');
+        return $this->fail('missing');
     }
 
     /**
@@ -57,13 +57,13 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
         $key = $this->generateRandomKey();
 
         if (! $this->writeKeyToEnvironmentFile($key)) {
-            return $this->fixResult('generation-failed')
+            return $this->fixFailed('generation-failed')
                 ->withDetails(sprintf('The application environment file [%s] could not be updated.', $this->environmentFilePath()));
         }
 
         config(['app.key' => $key]);
 
-        return $this->fixResult('generated');
+        return $this->fixed('generated');
     }
 
     private function generateRandomKey(): string

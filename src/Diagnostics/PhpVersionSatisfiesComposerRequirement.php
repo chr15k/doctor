@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Composer\Semver\Semver;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\ComposerJson;
 
 class PhpVersionSatisfiesComposerRequirement extends Diagnostic
@@ -15,17 +15,17 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
     public string $group = 'environment';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'constraint-missing' => Outcome::skip('The application does not declare a PHP version constraint.'),
-            'satisfied' => Outcome::pass('The current PHP version satisfies composer.json.'),
-            'unsatisfied' => Outcome::fail(
-                summary: 'The current PHP version does not satisfy composer.json.',
+            'constraint-missing' => 'The application does not declare a PHP version constraint.',
+            'satisfied' => 'The current PHP version satisfies composer.json.',
+            'unsatisfied' => Message::make(
+                summary: 'PHP {version} does not satisfy [{constraint}].',
                 remediation: 'Use a PHP binary that satisfies the composer.json PHP constraint.',
             ),
         ];
@@ -39,14 +39,16 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
         $constraint = (new ComposerJson)->phpConstraint();
 
         if ($constraint === null) {
-            return $this->result('constraint-missing');
+            return $this->skip('constraint-missing');
         }
 
         if (Semver::satisfies(PHP_VERSION, $constraint)) {
-            return $this->result('satisfied');
+            return $this->pass('satisfied');
         }
 
-        return $this->result('unsatisfied')
-            ->withDetails(sprintf('PHP %s does not satisfy [%s].', PHP_VERSION, $constraint));
+        return $this->fail('unsatisfied', [
+            'version' => PHP_VERSION,
+            'constraint' => $constraint,
+        ]);
     }
 }

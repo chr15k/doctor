@@ -8,7 +8,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Throwable;
 
 /**
@@ -21,27 +21,27 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
     public string $group = 'database';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'application-timezone-invalid' => Outcome::skip('Laravel does not have a valid application timezone configured.'),
-            'connection-missing' => Outcome::skip('Laravel does not have a default database connection configured.'),
-            'connection-inspection-failed' => Outcome::warn(
+            'application-timezone-invalid' => 'Laravel does not have a valid application timezone configured.',
+            'connection-missing' => 'Laravel does not have a default database connection configured.',
+            'connection-inspection-failed' => Message::make(
                 summary: 'Laravel could not inspect the database timezone.',
                 remediation: 'Confirm the default database connection is reachable, then run Doctor again.',
             ),
-            'sqlite' => Outcome::skip('SQLite does not expose a database timezone.'),
-            'unsupported-driver' => Outcome::skip('The [{driver}] database driver does not expose a comparable timezone.'),
-            'timezone-inspection-failed' => Outcome::warn(
+            'sqlite' => 'SQLite does not expose a database timezone.',
+            'unsupported-driver' => 'The [{driver}] database driver does not expose a comparable timezone.',
+            'timezone-inspection-failed' => Message::make(
                 summary: 'Laravel could not inspect the database timezone.',
                 remediation: 'Confirm the database user may read the session timezone, then run Doctor again.',
             ),
-            'matches' => Outcome::pass('The default database connection uses the application timezone.'),
-            'mismatch' => Outcome::warn(
+            'matches' => 'The default database connection uses the application timezone.',
+            'mismatch' => Message::make(
                 summary: 'The database timezone does not match the application timezone.',
                 remediation: 'Set the database session timezone to match app.timezone, or intentionally keep both at UTC.',
             ),
@@ -56,43 +56,43 @@ class DatabaseTimezoneMatchesApplication extends Diagnostic
         $applicationTimezone = $this->applicationTimezone();
 
         if (! $applicationTimezone instanceof DateTimeZone) {
-            return $this->result('application-timezone-invalid');
+            return $this->skip('application-timezone-invalid');
         }
 
         $connection = $this->configuredConnection();
 
         if ($connection === null) {
-            return $this->result('connection-missing');
+            return $this->skip('connection-missing');
         }
 
         try {
             $database = DB::connection($connection);
             $driver = $database->getDriverName();
         } catch (Throwable $e) {
-            return $this->result('connection-inspection-failed')
+            return $this->warn('connection-inspection-failed')
                 ->withDetails($e->getMessage());
         }
 
         if ($driver === 'sqlite') {
-            return $this->result('sqlite');
+            return $this->skip('sqlite');
         }
 
         if (! $this->supportsDriver($driver)) {
-            return $this->result('unsupported-driver', ['driver' => $driver]);
+            return $this->skip('unsupported-driver', ['driver' => $driver]);
         }
 
         try {
             $databaseTimezone = $this->databaseTimezone($database, $driver);
         } catch (Throwable $e) {
-            return $this->result('timezone-inspection-failed')
+            return $this->warn('timezone-inspection-failed')
                 ->withDetails($e->getMessage());
         }
 
         if ($this->timezonesMatch($applicationTimezone, $databaseTimezone)) {
-            return $this->result('matches');
+            return $this->pass('matches');
         }
 
-        return $this->result('mismatch')
+        return $this->warn('mismatch')
             ->withDetails($this->formatMismatch($applicationTimezone, $databaseTimezone, $connection, $driver));
     }
 

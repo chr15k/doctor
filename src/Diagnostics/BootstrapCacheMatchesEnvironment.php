@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class BootstrapCacheMatchesEnvironment extends Diagnostic
 {
@@ -15,20 +15,20 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
     public string $group = 'configuration';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'uncached-production' => Outcome::warn(
+            'uncached-production' => Message::make(
                 summary: 'Laravel bootstrap files are not cached.',
                 remediation: 'Run `php artisan optimize` or `php artisan config:cache` during deployment.',
             ),
-            'uncached-local' => Outcome::pass('Laravel bootstrap files are not cached.'),
-            'cached-production' => Outcome::pass('Laravel bootstrap files are cached.'),
-            'cached-local' => Outcome::notice(
+            'uncached-local' => 'Laravel bootstrap files are not cached.',
+            'cached-production' => 'Laravel bootstrap files are cached.',
+            'cached-local' => Message::make(
                 summary: 'Cached bootstrap {files} detected: {cached}.',
                 remediation: 'If recent changes are not appearing, run `php artisan optimize:clear`.',
             ),
@@ -44,17 +44,17 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
 
         if ($cached === []) {
             if (EnvironmentMode::current()->isProduction()) {
-                return $this->result('uncached-production');
+                return $this->warn('uncached-production');
             }
 
-            return $this->result('uncached-local');
+            return $this->pass('uncached-local');
         }
 
         if (EnvironmentMode::current()->isProduction()) {
-            return $this->result('cached-production');
+            return $this->pass('cached-production');
         }
 
-        return $this->result('cached-local', [
+        return $this->notice('cached-local', [
             'files' => Str::plural('file', count($cached)),
             'cached' => $this->formatCachedFiles($cached),
         ]);

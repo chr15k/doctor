@@ -7,7 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class EnvironmentFileExists extends Diagnostic implements Fixable
 {
@@ -16,27 +16,27 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
     public string $group = 'environment';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'exists' => Outcome::pass('Laravel has an environment file.'),
-            'missing' => Outcome::fail(
+            'exists' => 'Laravel has an environment file.',
+            'missing' => Message::make(
                 summary: 'Laravel does not have an environment file.',
                 confirmation: 'Would you like Doctor to copy .env.example to .env?',
             ),
-            'missing-with-example' => Outcome::fail(
+            'missing-with-example' => Message::make(
                 summary: 'Laravel does not have an environment file.',
                 remediation: 'Copy the example environment file to .env, then review its values.',
                 confirmation: 'Would you like Doctor to copy .env.example to .env?',
             ),
-            'already-exists' => Outcome::skip('The .env file already exists.'),
-            'example-missing' => Outcome::fail('The .env.example file does not exist.'),
-            'creation-failed' => Outcome::fail('The .env file could not be created from .env.example.'),
-            'created' => Outcome::pass('The .env file was created from .env.example.'),
+            'already-exists' => 'The .env file already exists.',
+            'example-missing' => 'The .env.example file does not exist.',
+            'creation-failed' => 'The .env file could not be created from .env.example.',
+            'created' => 'The .env file was created from .env.example.',
         ];
     }
 
@@ -46,14 +46,14 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
     public function check(): DiagnosticResult
     {
         if ($this->environmentFiles() !== []) {
-            return $this->result('exists');
+            return $this->pass('exists');
         }
 
         if (is_file(base_path('.env.example'))) {
-            return $this->result('missing-with-example');
+            return $this->fail('missing-with-example');
         }
 
-        return $this->result('missing');
+        return $this->fail('missing');
     }
 
     /**
@@ -65,18 +65,18 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
         $example = base_path('.env.example');
 
         if (is_file($target)) {
-            return $this->fixResult('already-exists');
+            return $this->fixed('already-exists');
         }
 
         if (! is_file($example)) {
-            return $this->fixResult('example-missing');
+            return $this->fixFailed('example-missing');
         }
 
         if (! @copy($example, $target)) {
-            return $this->fixResult('creation-failed');
+            return $this->fixFailed('creation-failed');
         }
 
-        return $this->fixResult('created')
+        return $this->fixed('created')
             ->withDetails('Review .env and run `php artisan key:generate` if APP_KEY is empty.');
     }
 

@@ -4,7 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Throwable;
 
 class ConfigurationFilesCanBeLoaded extends Diagnostic
@@ -14,16 +14,16 @@ class ConfigurationFilesCanBeLoaded extends Diagnostic
     public string $group = 'configuration';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'missing' => Outcome::skip('The application does not have configuration files.'),
-            'load-failed' => Outcome::fail('A configuration file could not be loaded.'),
-            'loaded' => Outcome::pass('Configuration files can be loaded.'),
+            'missing' => 'The application does not have configuration files.',
+            'load-failed' => 'A configuration file could not be loaded.',
+            'loaded' => 'Configuration files can be loaded.',
         ];
     }
 
@@ -35,18 +35,18 @@ class ConfigurationFilesCanBeLoaded extends Diagnostic
         $files = glob(base_path('config/*.php')) ?: [];
 
         if ($files === []) {
-            return $this->result('missing');
+            return $this->skip('missing');
         }
 
         foreach ($files as $file) {
             try {
                 require $file;
             } catch (Throwable $e) {
-                return $this->result('load-failed')
+                return $this->fail('load-failed')
                     ->withDetails(sprintf('%s: %s', basename($file), $e->getMessage()));
             }
         }
 
-        return $this->result('loaded');
+        return $this->pass('loaded');
     }
 }

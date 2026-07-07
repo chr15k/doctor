@@ -49,6 +49,6 @@ it('skips when the default filesystem disk is not configured', function (): void
     $result = (new FilesystemDisksAreReachable)->check();
 
     expect($result->status->value)->toBe('skip')
-        ->and($result->summary)->toBe('The default filesystem disk is not configured.')
-        ->and($result->details)->toBe('The [missing] filesystem disk is not configured.');
+        ->and($result->summary)->toBe('The default filesystem disk [missing] is not configured.')
+        ->and($result->details)->toBeNull();
 });

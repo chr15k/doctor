@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Database\Migrations\Migrator;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 use Throwable;
 
@@ -16,21 +16,21 @@ class MigrationsAreUpToDate extends Diagnostic
     public string $group = 'database';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'no-files' => Outcome::pass('The application does not have migration files.'),
-            'repository-missing' => Outcome::fail(
+            'no-files' => 'The application does not have migration files.',
+            'repository-missing' => Message::make(
                 summary: 'The migrations table does not exist.',
                 remediation: 'Create the migrations table and run pending migrations.',
             ),
-            'inspection-failed' => Outcome::fail('Laravel could not inspect database migrations.'),
-            'current' => Outcome::pass('Database migrations are current.'),
-            'pending' => Outcome::fail(
+            'inspection-failed' => 'Laravel could not inspect database migrations.',
+            'current' => 'Database migrations are current.',
+            'pending' => Message::make(
                 summary: 'Database migrations are pending.',
                 remediation: 'Run pending database migrations.',
             ),
@@ -52,11 +52,11 @@ class MigrationsAreUpToDate extends Diagnostic
             ])));
 
             if ($files === []) {
-                return $this->result('no-files');
+                return $this->pass('no-files');
             }
 
             if (! $migrator->repositoryExists()) {
-                return $this->result('repository-missing');
+                return $this->fail('repository-missing');
             }
 
             $pending = array_values(array_diff(
@@ -64,15 +64,15 @@ class MigrationsAreUpToDate extends Diagnostic
                 $migrator->getRepository()->getRan(),
             ));
         } catch (Throwable $e) {
-            return $this->result('inspection-failed')
+            return $this->fail('inspection-failed')
                 ->withDetails($e->getMessage());
         }
 
         if ($pending === []) {
-            return $this->result('current');
+            return $this->pass('current');
         }
 
-        return $this->result('pending')
+        return $this->fail('pending')
             ->withDetails(Details::bullets($pending));
     }
 }

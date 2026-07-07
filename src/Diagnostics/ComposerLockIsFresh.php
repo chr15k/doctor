@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 
 class ComposerLockIsFresh extends Diagnostic
@@ -15,24 +15,24 @@ class ComposerLockIsFresh extends Diagnostic
     public string $group = 'composer';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'composer-missing' => Outcome::skip('The application does not have a composer.json file.'),
-            'lock-missing' => Outcome::fail(
+            'composer-missing' => 'The application does not have a composer.json file.',
+            'lock-missing' => Message::make(
                 summary: 'The application does not have a composer.lock file.',
                 remediation: 'Commit a composer.lock file so deployments install the same dependencies.',
             ),
-            'fresh' => Outcome::pass('composer.lock is present and fresh.'),
-            'stale' => Outcome::fail(
+            'fresh' => 'composer.lock is present and fresh.',
+            'stale' => Message::make(
                 summary: 'composer.lock is missing or out of date.',
                 remediation: 'Refresh the lock file metadata without changing installed package versions.',
             ),
-            'inspection-failed' => Outcome::fail(
+            'inspection-failed' => Message::make(
                 summary: 'Composer could not verify composer.lock freshness.',
                 remediation: 'Run `composer validate --check-lock` and resolve the reported Composer errors.',
             ),
@@ -45,11 +45,11 @@ class ComposerLockIsFresh extends Diagnostic
     public function check(): DiagnosticResult
     {
         if (! is_file(base_path('composer.json'))) {
-            return $this->result('composer-missing');
+            return $this->skip('composer-missing');
         }
 
         if (! is_file(base_path('composer.lock'))) {
-            return $this->result('lock-missing');
+            return $this->fail('lock-missing');
         }
 
         $process = Process::path(base_path())->run([
@@ -62,7 +62,7 @@ class ComposerLockIsFresh extends Diagnostic
         ]);
 
         if ($process->successful()) {
-            return $this->result('fresh');
+            return $this->pass('fresh');
         }
 
         $details = Details::processOutput(
@@ -72,11 +72,11 @@ class ComposerLockIsFresh extends Diagnostic
         );
 
         if ($this->reportsStaleLock($details)) {
-            return $this->result('stale')
+            return $this->fail('stale')
                 ->withDetails($details);
         }
 
-        return $this->result('inspection-failed')
+        return $this->fail('inspection-failed')
             ->withDetails($details);
     }
 

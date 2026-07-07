@@ -19,5 +19,6 @@ it('reports an invalid application timezone', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->code)->toBe('application-timezone-is-valid.invalid')
-        ->and($result->details)->toContain('Invalid/Timezone');
+        ->and($result->summary)->toBe('The application timezone [Invalid/Timezone] is not a valid PHP timezone.')
+        ->and($result->details)->toBeNull();
 });

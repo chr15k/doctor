@@ -7,7 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class SqliteDatabaseExists extends Diagnostic implements Fixable
 {
@@ -16,24 +16,24 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
     public string $group = 'database';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'not-sqlite' => Outcome::skip('The default database connection is not SQLite.'),
-            'not-file' => Outcome::skip('The SQLite connection does not use a database file.'),
-            'exists' => Outcome::pass('The SQLite database file exists.'),
-            'missing' => Outcome::fail(
+            'not-sqlite' => 'The default database connection is not SQLite.',
+            'not-file' => 'The SQLite connection does not use a database file.',
+            'exists' => 'The SQLite database file exists.',
+            'missing' => Message::make(
                 summary: 'The SQLite database file does not exist.',
                 remediation: 'Create the SQLite database file at the configured path.',
                 confirmation: 'Would you like Doctor to create the SQLite database file?',
             ),
-            'already-exists' => Outcome::skip('The SQLite database file already exists.'),
-            'creation-failed' => Outcome::fail('The SQLite database file could not be created.'),
-            'created' => Outcome::pass('The SQLite database file was created.'),
+            'already-exists' => 'The SQLite database file already exists.',
+            'creation-failed' => 'The SQLite database file could not be created.',
+            'created' => 'The SQLite database file was created.',
         ];
     }
 
@@ -43,13 +43,13 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
     public function check(): DiagnosticResult
     {
         if (config('database.default') !== 'sqlite') {
-            return $this->result('not-sqlite');
+            return $this->skip('not-sqlite');
         }
 
         $database = config()->string('database.connections.sqlite.database', '');
 
         if ($database === '' || $database === ':memory:') {
-            return $this->result('not-file');
+            return $this->skip('not-file');
         }
 
         if (! str_starts_with($database, DIRECTORY_SEPARATOR)) {
@@ -57,11 +57,11 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
         }
 
         if (is_file($database)) {
-            return $this->result('exists')
+            return $this->pass('exists')
                 ->withContext('database', $database);
         }
 
-        return $this->result('missing')
+        return $this->fail('missing')
             ->withContext('database', $database);
     }
 
@@ -74,15 +74,15 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
         $database = $result->context['database'];
 
         if (is_file($database)) {
-            return $this->fixResult('already-exists');
+            return $this->fixed('already-exists');
         }
 
         File::ensureDirectoryExists(dirname($database));
 
         if (File::put($database, '') === false) {
-            return $this->fixResult('creation-failed');
+            return $this->fixFailed('creation-failed');
         }
 
-        return $this->fixResult('created');
+        return $this->fixed('created');
     }
 }

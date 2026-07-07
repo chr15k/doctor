@@ -150,6 +150,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Message;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
@@ -157,17 +158,32 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
 
     public string $group = 'environment';
 
+    protected function messages(): array
+    {
+        return [
+            'configured' => 'Laravel has an application key.',
+
+            'missing' => Message::make(
+                summary: 'Laravel does not have an application key.',
+                remediation: 'Generate an application key with `php artisan key:generate`.',
+                confirmation: 'Would you like Doctor to generate an application key using `artisan key:generate`?',
+            ),
+
+            'generated' => 'The application key was generated.',
+
+            'generation-failed' => 'The application key could not be generated.',
+        ];
+    }
+
     public function check(): DiagnosticResult
     {
         $key = config('app.key');
 
         if (is_string($key) && trim($key) !== '') {
-            return DiagnosticResult::pass('Laravel has an application key.');
+            return $this->pass('configured');
         }
 
-        return DiagnosticResult::fail('Laravel does not have an application key.')
-            ->confirmUsing('Would you like Doctor to generate an application key using `artisan key:generate`?')
-            ->suggest('Generate an application key with `php artisan key:generate`.');
+        return $this->fail('missing');
     }
 
     public function fix(DiagnosticResult $result): FixResult
@@ -175,16 +191,38 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
         $exitCode = Artisan::call('key:generate');
 
         if ($exitCode !== 0) {
-            return FixResult::fail('The application key could not be generated.')
+            return $this->fixFailed('generation-failed')
                 ->withDetails(trim(Artisan::output()));
         }
 
-        return FixResult::pass('The application key was generated.');
+        return $this->fixed('generated');
     }
 }
 ```
 
-Diagnostics should explain what failed and how to recover. Use `suggest()` for remediation text, `link()` for relevant documentation, and `confirmUsing()` when a fix needs a more specific prompt. If the check gathers state the fix will need, store it with `withContext()` on the result. Only implement `Fixable` when the repair is predictable and safe.
+Diagnostics should explain what failed and how to recover. Copy lives in the `messages()` registry: a plain string is used as the result's summary, while `Message::make()` may also provide remediation text, documentation links, or a confirmation prompt for fixes.
+
+Statuses are declared where the decision is made. Return `$this->pass()`, `$this->fail()`, `$this->warn()`, `$this->notice()`, `$this->skip()`, or `$this->error()` from `check()`, and `$this->fixed()` or `$this->fixFailed()` from `fix()`. Each result also receives a stable machine-readable code derived from the class and message names, such as `application-key-is-set.missing`.
+
+Summaries and remediation text may interpolate values using `{placeholder}` tokens supplied at the return site:
+
+```php
+'unsatisfied' => Message::make(
+    summary: 'PHP {version} does not satisfy [{constraint}].',
+    remediation: 'Use a PHP binary that satisfies the composer.json PHP constraint.',
+),
+```
+
+```php
+return $this->fail('unsatisfied', [
+    'version' => PHP_VERSION,
+    'constraint' => $constraint,
+]);
+```
+
+Reserve tokens for short identifying values such as versions, paths, and counts. Attach unbounded evidence such as exception messages, process output, or lists of failures with `withDetails()` instead.
+
+If the check gathers state the fix will need, store it with `withContext()` on the result. Only implement `Fixable` when the repair is predictable and safe.
 
 ## Registering Diagnostics
 

@@ -5,7 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 
 class QueueConnectionIsAsynchronous extends Diagnostic
 {
@@ -14,21 +14,21 @@ class QueueConnectionIsAsynchronous extends Diagnostic
     public string $group = 'queue';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'not-configured' => Outcome::skip('Laravel does not have a default queue connection configured.'),
-            'sync-production' => Outcome::warn(
+            'not-configured' => 'Laravel does not have a default queue connection configured.',
+            'sync-production' => Message::make(
                 summary: 'Queued jobs run synchronously in production.',
                 remediation: 'Set QUEUE_CONNECTION to a background queue driver such as database, redis, sqs, or beanstalkd.',
             ),
-            'sync-local' => Outcome::pass('Queued jobs run synchronously.'),
-            'async' => Outcome::pass('Queued jobs are processed asynchronously.'),
-            'async-local' => Outcome::notice(
+            'sync-local' => 'Queued jobs run synchronously.',
+            'async' => 'Queued jobs are processed asynchronously.',
+            'async-local' => Message::make(
                 summary: 'Queued jobs are processed asynchronously.',
                 remediation: 'Make sure a queue worker is running with `php artisan queue:work` or Horizon if jobs are not being processed.',
             ),
@@ -43,21 +43,21 @@ class QueueConnectionIsAsynchronous extends Diagnostic
         $connection = config('queue.default');
 
         if (! is_string($connection) || $connection === '') {
-            return $this->result('not-configured');
+            return $this->skip('not-configured');
         }
 
         if ($connection === 'sync' && EnvironmentMode::current()->isProduction()) {
-            return $this->result('sync-production');
+            return $this->warn('sync-production');
         }
 
         if ($connection === 'sync') {
-            return $this->result('sync-local');
+            return $this->pass('sync-local');
         }
 
         if (EnvironmentMode::current()->isProduction()) {
-            return $this->result('async');
+            return $this->pass('async');
         }
 
-        return $this->result('async-local');
+        return $this->notice('async-local');
     }
 }

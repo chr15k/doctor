@@ -6,7 +6,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
-use Laravel\Doctor\Results\Outcome;
+use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 use RuntimeException;
 
@@ -17,20 +17,20 @@ class StorageIsWritable extends Diagnostic implements Fixable
     public string $group = 'storage';
 
     /**
-     * Get the diagnostic's named outcome definitions.
+     * Get the diagnostic's named message definitions.
      *
-     * @return array<string, Outcome>
+     * @return array<string, string|Message>
      */
-    protected function outcomes(): array
+    protected function messages(): array
     {
         return [
-            'writable' => Outcome::pass('Laravel storage directories are writable.'),
-            'not-writable' => Outcome::fail(
+            'writable' => 'Laravel storage directories are writable.',
+            'not-writable' => Message::make(
                 summary: 'Laravel cannot write to every required storage directory.',
                 remediation: 'Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.',
                 confirmation: 'Would you like Doctor to make Laravel\'s storage directories writable?',
             ),
-            'still-not-writable' => Outcome::fail('Some Laravel storage directories are still not writable.'),
+            'still-not-writable' => 'Some Laravel storage directories are still not writable.',
         ];
     }
 
@@ -42,10 +42,10 @@ class StorageIsWritable extends Diagnostic implements Fixable
         $failures = $this->failures();
 
         if ($failures === []) {
-            return $this->result('writable');
+            return $this->pass('writable');
         }
 
-        return $this->result('not-writable')
+        return $this->fail('not-writable')
             ->withDetails(Details::failures($failures));
     }
 
@@ -73,15 +73,15 @@ class StorageIsWritable extends Diagnostic implements Fixable
         $failures = $this->failures();
 
         if ($failures !== []) {
-            return $this->fixResult('still-not-writable')
+            return $this->fixFailed('still-not-writable')
                 ->withDetails(Details::failures($failures));
         }
 
         if ($changed === []) {
-            return $this->fixResult('writable');
+            return $this->fixed('writable');
         }
 
-        return $this->fixResult('writable')
+        return $this->fixed('writable')
             ->withDetails(implode(PHP_EOL, $changed));
     }
 

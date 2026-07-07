@@ -90,7 +90,11 @@ class DiagnosticResult
     }
 
     /**
-     * Add details to the diagnostic result.
+     * Add evidence to the diagnostic result.
+     *
+     * Prefer message tokens for short identifying values like versions, paths,
+     * constraints, or counts. Use details for unbounded or multi-line evidence
+     * such as exception messages, process output, and bullet lists.
      */
     public function withDetails(string $details): static
     {
