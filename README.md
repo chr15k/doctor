@@ -113,8 +113,7 @@ Doctor maps Laravel environment names to one of its supported modes:
 'environments' => [
     'local' => 'local',
     'production' => 'production',
-    'dev' => 'local',
-    'staging' => 'production',
+    // 'staging' => 'production', // Laravel environment => Doctor mode
 ],
 ```
 
@@ -256,6 +255,38 @@ Reports show each diagnostic's source next to its name. The source is the Compos
 [fail] Storage is writable (laravel/doctor): Laravel cannot write to every required storage directory.
 [pass] SQLite database exists (acme/application): The SQLite database file exists.
 [warn] Horizon is running (laravel/horizon): Horizon is not currently running.
+```
+
+## Running Doctor Programmatically
+
+Doctor may also be run without the Artisan command. The `run` method runs the registered diagnostics and returns a `DiagnosticReport`:
+
+```php
+use Laravel\Doctor\Facades\Doctor;
+
+$report = Doctor::run();
+
+if ($report->hasFailures()) {
+    // ...
+}
+```
+
+Programmatic runs honor the `only` and `except` selectors from Doctor's configuration file. To run a different set of diagnostics, pass a `DiagnosticSelection`:
+
+```php
+use Laravel\Doctor\DiagnosticSelection;
+
+$report = Doctor::run(DiagnosticSelection::make(only: ['security']));
+```
+
+To apply fixes as part of a run, build the run using the `runner` method. The `fixUsing` callback receives each failing diagnostic that offers a fix and determines whether the fix should be applied. When any fixes are applied, Doctor re-runs the diagnostics so the report reflects the repaired application:
+
+```php
+$report = Doctor::runner()
+    ->fixUsing(fn ($outcome) => true)
+    ->run();
+
+$report->fixes();
 ```
 
 ## Output Formats

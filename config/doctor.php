@@ -34,6 +34,7 @@ return [
     'environments' => [
         'local' => 'local',
         'production' => 'production',
+        // 'staging' => 'production', // Laravel environment => Doctor mode
     ],
 
 ];

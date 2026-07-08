@@ -2,11 +2,12 @@
 
 namespace Laravel\Doctor\Console;
 
+use Closure;
 use Illuminate\Console\Command;
-use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
+use Laravel\Doctor\PendingRun;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
 use Laravel\Doctor\Results\Status;
@@ -115,7 +116,11 @@ class DoctorCommand extends Command
      */
     protected function runCli(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
-        $report = $this->applyFixes($doctor, $selection, $this->runForCli($doctor, $selection));
+        $report = $doctor->runner($selection)
+            ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->through($this->taskRunner()))
+            ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
+            ->beforeRerun(fn () => info('Re-running diagnostics after applying fixes...'))
+            ->run();
 
         if ($report->diagnostics() === []) {
             if (! $doctor->hasDiagnostics()) {
@@ -167,10 +172,7 @@ class DoctorCommand extends Command
      */
     protected function selection(Doctor $doctor): DiagnosticSelection
     {
-        $selection = DiagnosticSelection::make(
-            only: $this->configList('only'),
-            except: $this->configList('except'),
-        )->constrain(
+        $selection = $doctor->defaultSelection()->constrain(
             only: $this->optionList('only'),
             except: $this->optionList('except'),
         );
@@ -212,42 +214,6 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Get a normalized list configuration value.
-     *
-     * @return list<string>
-     */
-    protected function configList(string $name): array
-    {
-        return array_values(array_filter(config()->array('doctor.'.$name, []), is_string(...)));
-    }
-
-    /**
-     * Run diagnostics for CLI output.
-     */
-    protected function runForCli(Doctor $doctor, DiagnosticSelection $selection): DiagnosticReport
-    {
-        if (! $this->shouldUseTasks()) {
-            return $doctor->run($selection);
-        }
-
-        $outcomes = [];
-
-        foreach ($doctor->selectedByGroup($selection) as $group => $diagnostics) {
-            $outcomes = [
-                ...$outcomes,
-                ...task(
-                    label: sprintf('Running %s diagnostics...', ucfirst($group)),
-                    limit: 0,
-                    keepSummary: true,
-                    callback: fn (Logger $logger): array => $this->runTaskGroup($doctor, $diagnostics, $logger),
-                ),
-            ];
-        }
-
-        return new DiagnosticReport($outcomes);
-    }
-
-    /**
      * Determine whether Laravel Prompts tasks should be used.
      */
     protected function shouldUseTasks(): bool
@@ -258,30 +224,30 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Run a grouped set of diagnostics inside a task.
+     * Get the callback that runs each diagnostic group as a console task.
+     */
+    protected function taskRunner(): Closure
+    {
+        return fn (string $group, Closure $run): array => task(
+            label: sprintf('Running %s diagnostics...', ucfirst($group)),
+            limit: 0,
+            keepSummary: true,
+            callback: fn (Logger $logger): array => $this->runGroupTask($run, $logger),
+        );
+    }
+
+    /**
+     * Run a diagnostic group within a console task.
      *
-     * @param  list<Diagnostic>  $diagnostics
+     * @param  Closure(?Closure, ?Closure): list<DiagnosticOutcome>  $run
      * @return list<DiagnosticOutcome>
      */
-    protected function runTaskGroup(Doctor $doctor, array $diagnostics, Logger $logger): array
+    protected function runGroupTask(Closure $run, Logger $logger): array
     {
-        $outcomes = [];
-
-        foreach ($diagnostics as $diagnostic) {
-            $logger->subLabel($diagnostic->name);
-
-            $outcome = $doctor->check($diagnostic);
-
-            match ($outcome->result->status) {
-                Status::Pass => $logger->success($diagnostic->name),
-                Status::Notice => $logger->line($diagnostic->name.': '.$outcome->result->summary),
-                Status::Warn => $logger->warning($diagnostic->name.': '.$outcome->result->summary),
-                Status::Skip => $logger->line($diagnostic->name.': '.$outcome->result->summary),
-                Status::Fail, Status::Error => $logger->error($diagnostic->name.': '.$outcome->result->summary),
-            };
-
-            $outcomes[] = $outcome;
-        }
+        $outcomes = $run(
+            fn (Diagnostic $diagnostic) => $logger->subLabel($diagnostic->name),
+            fn (DiagnosticOutcome $outcome) => $this->logOutcome($logger, $outcome),
+        );
 
         $logger->subLabel('');
 
@@ -289,35 +255,18 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Apply accepted diagnostic fixes.
+     * Write a diagnostic outcome to the task logger.
      */
-    protected function applyFixes(Doctor $doctor, DiagnosticSelection $selection, DiagnosticReport $report): DiagnosticReport
+    protected function logOutcome(Logger $logger, DiagnosticOutcome $outcome): void
     {
-        $fixes = [];
+        $name = $outcome->diagnostic->name;
 
-        foreach ($report->diagnostics() as $outcome) {
-            if (! $outcome->result->status->failed()) {
-                continue;
-            }
-
-            if (! $outcome->diagnostic instanceof Fixable) {
-                continue;
-            }
-
-            if (! $this->shouldApplyFix($outcome)) {
-                continue;
-            }
-
-            $fixes[] = $doctor->fix($outcome);
-        }
-
-        if ($fixes === []) {
-            return $report;
-        }
-
-        info('Re-running diagnostics after applying fixes...');
-
-        return $this->runForCli($doctor, $selection)->withFixes($fixes);
+        match ($outcome->result->status) {
+            Status::Pass => $logger->success($name),
+            Status::Notice, Status::Skip => $logger->line($name.': '.$outcome->result->summary),
+            Status::Warn => $logger->warning($name.': '.$outcome->result->summary),
+            Status::Fail, Status::Error => $logger->error($name.': '.$outcome->result->summary),
+        };
     }
 
     /**

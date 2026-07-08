@@ -46,7 +46,7 @@ it('notices when queued jobs are processed asynchronously locally', function ():
 
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('Queued jobs are processed asynchronously.')
-        ->and($result->remediation)->toBe('Make sure a queue worker is running with `php artisan queue:work` or Horizon if jobs are not being processed.');
+        ->and($result->remediation)->toBe('Make sure a queue worker is running with `php artisan queue:work` if jobs are not being processed.');
 });
 
 it('passes when queued jobs are processed asynchronously outside local environments', function (): void {

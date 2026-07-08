@@ -90,15 +90,26 @@ class Doctor
      */
     public function run(?DiagnosticSelection $selection = null): DiagnosticReport
     {
-        $outcomes = [];
+        return $this->runner($selection)->run();
+    }
 
-        foreach ($this->selectedByGroup($selection) as $diagnostics) {
-            foreach ($diagnostics as $diagnostic) {
-                $outcomes[] = $this->check($diagnostic);
-            }
-        }
+    /**
+     * Begin a new diagnostic run.
+     */
+    public function runner(?DiagnosticSelection $selection = null): PendingRun
+    {
+        return new PendingRun($this, $selection ?? $this->defaultSelection());
+    }
 
-        return new DiagnosticReport($outcomes);
+    /**
+     * Get the diagnostic selection configured for the application.
+     */
+    public function defaultSelection(): DiagnosticSelection
+    {
+        return DiagnosticSelection::make(
+            only: array_filter(config()->array('doctor.only', []), is_string(...)),
+            except: array_filter(config()->array('doctor.except', []), is_string(...)),
+        );
     }
 
     /**

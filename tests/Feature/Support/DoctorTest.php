@@ -15,9 +15,11 @@ use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\DatabaseDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\DefaultMetadataDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\NoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\ThrowingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\ThrowingFixDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\WarningDiagnostic;
@@ -160,6 +162,99 @@ it('rejects fixes for diagnostics that are not fixable', function (): void {
         DiagnosticResult::fail('The diagnostic failed.'),
     ));
 })->throws(LogicException::class);
+
+it('applies configured selectors to programmatic runs', function (): void {
+    config(['doctor.only' => ['database']]);
+
+    $doctor = (new Doctor($this->app))->diagnostics([
+        PassingDiagnostic::class,
+        DatabaseDiagnostic::class,
+    ]);
+
+    $report = $doctor->run();
+
+    expect($report->diagnostics())->toHaveCount(1)
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(DatabaseDiagnostic::class);
+});
+
+it('applies approved fixes and re-runs the diagnostics', function (): void {
+    config(['doctor-testing.shared-state-fixed' => false]);
+
+    $doctor = (new Doctor($this->app))->diagnostics([
+        FixesSharedStateDiagnostic::class,
+        SharedStateWasFixedDiagnostic::class,
+    ]);
+
+    $rerunning = false;
+
+    $report = $doctor->runner()
+        ->fixUsing(fn (DiagnosticOutcome $outcome): bool => true)
+        ->beforeRerun(function () use (&$rerunning): void {
+            $rerunning = true;
+        })
+        ->run();
+
+    expect($report->fixes())->toHaveCount(1)
+        ->and($report->fixes()[0]->result->summary)->toBe('The shared state fix ran.')
+        ->and($report->hasFailures())->toBeFalse()
+        ->and($rerunning)->toBeTrue();
+});
+
+it('does not re-run diagnostics when fixes are declined', function (): void {
+    config(['doctor-testing.shared-state-fixed' => false]);
+
+    $doctor = (new Doctor($this->app))->diagnostic(FixesSharedStateDiagnostic::class);
+
+    $rerunning = false;
+
+    $report = $doctor->runner()
+        ->fixUsing(fn (DiagnosticOutcome $outcome): bool => false)
+        ->beforeRerun(function () use (&$rerunning): void {
+            $rerunning = true;
+        })
+        ->run();
+
+    expect($report->fixes())->toBe([])
+        ->and($report->hasFailures())->toBeTrue()
+        ->and($rerunning)->toBeFalse();
+});
+
+it('runs diagnostic groups through the given callback', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostics([
+        PassingDiagnostic::class,
+        DatabaseDiagnostic::class,
+        WarningDiagnostic::class,
+    ]);
+
+    $observed = [];
+
+    $report = $doctor->runner()
+        ->through(function (string $group, Closure $run) use (&$observed): array {
+            $observed[] = 'group:'.$group;
+
+            return $run(
+                function (Diagnostic $diagnostic) use (&$observed): void {
+                    $observed[] = 'checking:'.class_basename($diagnostic);
+                },
+                function (DiagnosticOutcome $outcome) use (&$observed): void {
+                    $observed[] = 'checked:'.class_basename($outcome->diagnostic);
+                },
+            );
+        })
+        ->run();
+
+    expect($report->diagnostics())->toHaveCount(3)
+        ->and($observed)->toBe([
+            'group:testing',
+            'checking:PassingDiagnostic',
+            'checked:PassingDiagnostic',
+            'checking:WarningDiagnostic',
+            'checked:WarningDiagnostic',
+            'group:database',
+            'checking:DatabaseDiagnostic',
+            'checked:DatabaseDiagnostic',
+        ]);
+});
 
 it('appends fixes to an existing diagnostic report', function (): void {
     $diagnostic = new PassingDiagnostic;
