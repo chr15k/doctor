@@ -62,7 +62,7 @@ it('generates an application key when fixed', function (): void {
         ->and(str_starts_with((string) config('app.key'), 'base64:'))->toBeTrue();
 });
 
-it('adds an application key to the environment file when the variable is missing', function (): void {
+it('reports when the environment file has no APP_KEY variable', function (): void {
     config(['app.key' => '']);
 
     $environmentPath = doctor_application_key_environment_path("APP_NAME=Laravel\n");
@@ -74,9 +74,10 @@ it('adds an application key to the environment file when the variable is missing
         DiagnosticResult::fail('Laravel does not have an application key.'),
     ));
 
-    expect($fix->result->status->value)->toBe('pass')
-        ->and(file_get_contents($environmentPath.'/.env'))->toContain("APP_NAME=Laravel\nAPP_KEY=base64:")
-        ->and(str_starts_with((string) config('app.key'), 'base64:'))->toBeTrue();
+    expect($fix->result->status->value)->toBe('fail')
+        ->and($fix->result->code)->toBe('application-key-is-set.fix.generation-failed')
+        ->and($fix->result->details)->toContain('Unable to set application key')
+        ->and(file_get_contents($environmentPath.'/.env'))->toBe("APP_NAME=Laravel\n");
 });
 
 it('reports when the application key cannot be written to the environment file', function (): void {

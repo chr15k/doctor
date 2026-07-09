@@ -3,6 +3,7 @@
 namespace Laravel\Doctor;
 
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
@@ -156,13 +157,10 @@ class Doctor
      */
     public function selectedByGroup(?DiagnosticSelection $selection = null): array
     {
-        $groups = [];
-
-        foreach ($this->selected($selection) as $diagnostic) {
-            $groups[$diagnostic->group][] = $diagnostic;
-        }
-
-        return $groups;
+        return collect($this->selected($selection))
+            ->groupBy(static fn (Diagnostic $diagnostic): string => $diagnostic->group)
+            ->map(static fn (Collection $diagnostics): array => array_values($diagnostics->all()))
+            ->all();
     }
 
     /**
@@ -172,15 +170,10 @@ class Doctor
      */
     public function availableGroups(?DiagnosticSelection $selection = null): array
     {
-        $groups = [];
-
-        foreach ($this->selected($selection) as $diagnostic) {
-            $groups[$diagnostic->group] = ucfirst($diagnostic->group);
-        }
-
-        ksort($groups);
-
-        return $groups;
+        return collect($this->selected($selection))
+            ->mapWithKeys(static fn (Diagnostic $diagnostic): array => [$diagnostic->group => ucfirst($diagnostic->group)])
+            ->sortKeys()
+            ->all();
     }
 
     /**

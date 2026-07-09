@@ -26,8 +26,9 @@ return [
     | Environment Modes
     |--------------------------------------------------------------------------
     |
-    | Doctor maps Laravel environment names to one of its supported modes.
-    | Any environment that is not listed here is treated as production.
+    | Doctor maps Laravel environment names to one of its supported modes so
+    | diagnostics know which expectations apply. Any environment that is
+    | not listed here is treated as production, the strictest mode.
     |
     */
 

@@ -8,6 +8,8 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\PendingRun;
+use Laravel\Doctor\Renderers\CliRenderer;
+use Laravel\Doctor\Renderers\GithubRenderer;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
 use Laravel\Doctor\Results\Status;
@@ -119,7 +121,11 @@ class DoctorCommand extends Command
         $report = $doctor->runner($selection)
             ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->through($this->taskRunner()))
             ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
-            ->beforeRerun(fn () => info('Re-running diagnostics after applying fixes...'))
+            ->beforeRerun(function (): void {
+                $this->restorePrompts();
+
+                info('Re-running diagnostics after applying fixes...');
+            })
             ->run();
 
         if ($report->diagnostics() === []) {
@@ -282,9 +288,23 @@ class DoctorCommand extends Command
             return false;
         }
 
+        $this->restorePrompts();
+
         $this->renderer()->renderFixConfirmation($outcome);
 
         return confirm($this->confirmationPrompt($outcome), default: true);
+    }
+
+    /**
+     * Restore the prompts configuration.
+     *
+     * Fixes may run nested Artisan commands, which re-bind the global prompts
+     * output and fallbacks to the nested command. Without a restore, Doctor's
+     * remaining output is swallowed and pending confirmations appear to hang.
+     */
+    protected function restorePrompts(): void
+    {
+        $this->configurePrompts($this->input);
     }
 
     /**

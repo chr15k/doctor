@@ -1,6 +1,6 @@
 <?php
 
-namespace Laravel\Doctor\Console;
+namespace Laravel\Doctor\Renderers;
 
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;

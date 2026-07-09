@@ -107,17 +107,40 @@ The `only` and `except` options accept the same selectors as the command line: d
 
 Configured `only` selectors act as a persistent allowlist. Passing `--only` at runtime narrows that allowlist further, while configured `except` selectors and `--except` are combined.
 
-Doctor maps Laravel environment names to one of its supported modes:
+## Environment Modes
+
+Some facts about an application cannot be judged on their own. A `sync` queue connection is a sensible default on a developer's machine, but in production it means queued jobs silently run inside web requests. Uncached bootstrap files are correct while code is changing, but in production they mean the deployment never ran `php artisan optimize`. Debug mode is essential locally and a security problem on a public server.
+
+To judge these diagnostics, Doctor resolves the application to one of two modes:
+
+| Mode         | Expectations                                                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `local`      | The application is under active development. Debug mode, `sync` queues, and uncached bootstrap files are normal.                              |
+| `production` | The application serves real traffic. Debug mode is a security risk, queues should run asynchronously, and bootstrap files should be cached.   |
+
+The mode changes the verdict, not just the message. Missing bootstrap caches warn in production but pass locally, while present bootstrap caches pass in production but produce a notice locally, since a stale cache is a common reason recent changes do not appear during development.
+
+Doctor recognizes Laravel's conventional `local` and `production` environment names out of the box. If your application uses other names, such as `staging` or `qa`, map each one to a Doctor mode in the configuration file:
 
 ```php
 'environments' => [
     'local' => 'local',
     'production' => 'production',
-    // 'staging' => 'production', // Laravel environment => Doctor mode
+    'staging' => 'production',
 ],
 ```
 
-Any environment not listed is treated as `production`. Mapping an environment to an unsupported mode throws an exception, since a misconfigured Doctor cannot be trusted to diagnose anything else.
+Any environment not listed is treated as `production`, so unfamiliar environments are held to the strictest expectations rather than quietly excused. Mapping an environment to an unsupported mode throws an exception, since a misconfigured Doctor cannot be trusted to diagnose anything else.
+
+Custom diagnostics may branch on the current mode:
+
+```php
+use Laravel\Doctor\EnvironmentMode;
+
+if (EnvironmentMode::current()->isProduction()) {
+    return $this->warn('sync-in-production');
+}
+```
 
 ## Default Diagnostics
 
@@ -187,9 +210,11 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
 
     public function fix(DiagnosticResult $result): FixResult
     {
-        $exitCode = Artisan::call('key:generate');
+        Artisan::call('key:generate', ['--force' => true]);
 
-        if ($exitCode !== 0) {
+        $key = config('app.key');
+
+        if (! is_string($key) || trim($key) === '') {
             return $this->fixFailed('generation-failed')
                 ->withDetails(trim(Artisan::output()));
         }

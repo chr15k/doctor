@@ -2,14 +2,13 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Encryption\Encrypter;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
-use Laravel\Doctor\Support\Configured;
+use Laravel\Doctor\Support\Details;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
@@ -41,9 +40,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
      */
     public function check(): DiagnosticResult
     {
-        $key = config('app.key');
-
-        if (is_string($key) && trim($key) !== '') {
+        if ($this->keyIsConfigured()) {
             return $this->pass('configured');
         }
 
@@ -55,67 +52,35 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
      */
     public function fix(DiagnosticResult $result): FixResult
     {
-        $key = $this->generateRandomKey();
+        $path = app()->environmentFilePath();
 
-        if (! $this->writeKeyToEnvironmentFile($key)) {
+        // The key:generate command reports success even when the write fails...
+        if (! is_file($path) || ! is_writable($path)) {
             return $this->fixFailed('generation-failed')
-                ->withDetails(sprintf('The application environment file [%s] could not be updated.', $this->environmentFilePath()));
+                ->withDetails(sprintf('The application environment file [%s] could not be updated.', $path));
         }
 
-        config(['app.key' => $key]);
+        Artisan::call('key:generate', ['--force' => true]);
+
+        if (! $this->keyIsConfigured()) {
+            return $this->fixFailed('generation-failed')
+                ->withDetails(Details::processOutput(
+                    Artisan::output(),
+                    '',
+                    'The key:generate command did not set an application key.',
+                ));
+        }
 
         return $this->fixed('generated');
     }
 
-    private function generateRandomKey(): string
+    /**
+     * Determine whether the application key is configured.
+     */
+    private function keyIsConfigured(): bool
     {
-        return 'base64:'.base64_encode(
-            Encrypter::generateKey($this->applicationCipher())
-        );
-    }
+        $key = config('app.key');
 
-    private function applicationCipher(): string
-    {
-        return Configured::string('app.cipher', 'AES-256-CBC');
-    }
-
-    private function writeKeyToEnvironmentFile(string $key): bool
-    {
-        $path = $this->environmentFilePath();
-
-        if (! File::isFile($path) || ! is_writable($path)) {
-            return false;
-        }
-
-        $contents = File::get($path);
-        $line = 'APP_KEY='.$key;
-        $updated = $this->replaceExistingKey($contents, $line)
-            ?? $this->appendMissingKey($contents, $line);
-
-        return File::put($path, $updated) !== false;
-    }
-
-    private function replaceExistingKey(string $contents, string $line): ?string
-    {
-        if (preg_match('/^\s*APP_KEY\s*=.*$/m', $contents) !== 1) {
-            return null;
-        }
-
-        $updated = preg_replace('/^\s*APP_KEY\s*=.*$/m', $line, $contents, 1);
-
-        return is_string($updated) ? $updated : null;
-    }
-
-    private function appendMissingKey(string $contents, string $line): string
-    {
-        $newline = str_contains($contents, "\r\n") ? "\r\n" : "\n";
-        $separator = $contents === '' || str_ends_with($contents, "\n") ? '' : $newline;
-
-        return $contents.$separator.$line.$newline;
-    }
-
-    private function environmentFilePath(): string
-    {
-        return app()->environmentFilePath();
+        return is_string($key) && trim($key) !== '';
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
+use Illuminate\Support\Composer;
 use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
@@ -50,7 +51,7 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
         }
 
         $process = Process::path(base_path())->run([
-            'composer',
+            ...$this->composer(),
             'dump-autoload',
             '--dry-run',
             '--optimize',
@@ -73,7 +74,7 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
     public function fix(DiagnosticResult $result): FixResult
     {
         $process = Process::path(base_path())->run([
-            'composer',
+            ...$this->composer(),
             'dump-autoload',
             '--optimize',
             '--strict-psr',
@@ -87,5 +88,18 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
         }
 
         return $this->fixed('regenerated');
+    }
+
+    /**
+     * Get the Composer command for the application.
+     *
+     * @return list<string>
+     */
+    private function composer(): array
+    {
+        /** @var Composer $composer */
+        $composer = app('composer');
+
+        return array_values($composer->findComposer());
     }
 }

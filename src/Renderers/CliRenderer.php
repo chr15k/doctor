@@ -1,8 +1,9 @@
 <?php
 
-namespace Laravel\Doctor\Console;
+namespace Laravel\Doctor\Renderers;
 
 use Illuminate\Console\OutputStyle;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
@@ -164,13 +165,10 @@ class CliRenderer
      */
     protected function noticesBySource(array $notices): array
     {
-        $grouped = [];
-
-        foreach ($notices as $notice) {
-            $grouped[$notice->source()->label()][] = $notice;
-        }
-
-        return $grouped;
+        return collect($notices)
+            ->groupBy(static fn (DiagnosticOutcome $notice): string => $notice->source()->label())
+            ->map(static fn (Collection $notices): array => array_values($notices->all()))
+            ->all();
     }
 
     /**
@@ -222,16 +220,9 @@ class CliRenderer
      */
     protected function noticeLinks(array $notices): array
     {
-        $links = [];
-
-        foreach ($notices as $notice) {
-            $links = [
-                ...$links,
-                ...$notice->result->links,
-            ];
-        }
-
-        return $links;
+        return collect($notices)
+            ->flatMap(static fn (DiagnosticOutcome $notice): array => $notice->result->links)
+            ->all();
     }
 
     /**
@@ -261,13 +252,10 @@ class CliRenderer
      */
     protected function fixesBySource(array $fixes): array
     {
-        $grouped = [];
-
-        foreach ($fixes as $fix) {
-            $grouped[$fix->source()->label()][] = $fix;
-        }
-
-        return $grouped;
+        return collect($fixes)
+            ->groupBy(static fn (DiagnosticFixOutcome $fix): string => $fix->source()->label())
+            ->map(static fn (Collection $fixes): array => array_values($fixes->all()))
+            ->all();
     }
 
     /**

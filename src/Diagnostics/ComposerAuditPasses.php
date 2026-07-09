@@ -2,6 +2,7 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
+use Illuminate\Support\Composer;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
@@ -46,7 +47,7 @@ class ComposerAuditPasses extends Diagnostic
         }
 
         $process = Process::path(base_path())->timeout(10)->run([
-            'composer',
+            ...$this->composer(),
             'audit',
             '--format=json',
             '--no-interaction',
@@ -74,6 +75,19 @@ class ComposerAuditPasses extends Diagnostic
         }
 
         return $this->pass('clean');
+    }
+
+    /**
+     * Get the Composer command for the application.
+     *
+     * @return list<string>
+     */
+    private function composer(): array
+    {
+        /** @var Composer $composer */
+        $composer = app('composer');
+
+        return array_values($composer->findComposer());
     }
 
     /**

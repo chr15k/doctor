@@ -115,19 +115,12 @@ class DiagnosticSelection
      */
     protected static function normalize(iterable $values): array
     {
-        $normalized = [];
-
-        foreach ($values as $value) {
-            foreach (explode(',', $value) as $part) {
-                $part = trim($part);
-
-                if ($part !== '') {
-                    $normalized[] = $part;
-                }
-            }
-        }
-
-        return array_values(array_unique($normalized));
+        return array_values(collect($values)
+            ->flatMap(static fn (string $value): array => explode(',', $value))
+            ->map(static fn (string $part): string => trim($part))
+            ->filter(static fn (string $part): bool => $part !== '')
+            ->unique()
+            ->all());
     }
 
     /**

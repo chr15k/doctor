@@ -3,6 +3,7 @@
 namespace Laravel\Doctor\Support;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\File;
 
 class ComposerJson
 {
@@ -18,7 +19,7 @@ class ComposerJson
      */
     public function exists(): bool
     {
-        return is_file($this->path());
+        return File::isFile($this->path());
     }
 
     /**
@@ -67,13 +68,11 @@ class ComposerJson
             return $this->contents;
         }
 
-        $contents = @file_get_contents($this->path());
-
-        if ($contents === false) {
+        if (! $this->exists()) {
             return null;
         }
 
-        $decoded = json_decode($contents, true);
+        $decoded = json_decode(File::get($this->path()), true);
 
         if (! is_array($decoded)) {
             return null;

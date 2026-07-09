@@ -2,7 +2,6 @@
 
 use Illuminate\Console\OutputStyle;
 use Illuminate\Contracts\Console\Kernel;
-use Laravel\Doctor\Console\CliRenderer;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Diagnostics\ApplicationTimezoneIsValid;
@@ -33,6 +32,7 @@ use Laravel\Doctor\Diagnostics\SqliteDatabaseExists;
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
 use Laravel\Doctor\DoctorServiceProvider;
 use Laravel\Doctor\Facades\Doctor;
+use Laravel\Doctor\Renderers\CliRenderer;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;

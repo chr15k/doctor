@@ -2,6 +2,7 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
+use Illuminate\Support\Composer;
 use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
@@ -53,7 +54,7 @@ class ComposerLockIsFresh extends Diagnostic
         }
 
         $process = Process::path(base_path())->run([
-            'composer',
+            ...$this->composer(),
             'validate',
             '--check-lock',
             '--no-check-publish',
@@ -78,6 +79,19 @@ class ComposerLockIsFresh extends Diagnostic
 
         return $this->fail('inspection-failed')
             ->withDetails($details);
+    }
+
+    /**
+     * Get the Composer command for the application.
+     *
+     * @return list<string>
+     */
+    private function composer(): array
+    {
+        /** @var Composer $composer */
+        $composer = app('composer');
+
+        return array_values($composer->findComposer());
     }
 
     /**
