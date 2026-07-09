@@ -229,30 +229,24 @@ it('runs diagnostic groups through the given callback', function (): void {
     $observed = [];
 
     $report = $doctor->runner()
-        ->through(function (string $group, Closure $run) use (&$observed): array {
+        ->through(function (string $group, array $diagnostics) use (&$observed, $doctor): array {
             $observed[] = 'group:'.$group;
 
-            return $run(
-                function (Diagnostic $diagnostic) use (&$observed): void {
-                    $observed[] = 'checking:'.class_basename($diagnostic);
-                },
-                function (DiagnosticOutcome $outcome) use (&$observed): void {
-                    $observed[] = 'checked:'.class_basename($outcome->diagnostic);
-                },
-            );
+            return array_map(function (Diagnostic $diagnostic) use (&$observed, $doctor): DiagnosticOutcome {
+                $observed[] = class_basename($diagnostic);
+
+                return $doctor->check($diagnostic);
+            }, $diagnostics);
         })
         ->run();
 
     expect($report->diagnostics())->toHaveCount(3)
         ->and($observed)->toBe([
             'group:testing',
-            'checking:PassingDiagnostic',
-            'checked:PassingDiagnostic',
-            'checking:WarningDiagnostic',
-            'checked:WarningDiagnostic',
+            'PassingDiagnostic',
+            'WarningDiagnostic',
             'group:database',
-            'checking:DatabaseDiagnostic',
-            'checked:DatabaseDiagnostic',
+            'DatabaseDiagnostic',
         ]);
 });
 

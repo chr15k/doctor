@@ -16,7 +16,7 @@ class PendingRun
     /**
      * The callback used to execute each diagnostic group.
      *
-     * @var (Closure(string, Closure): list<DiagnosticOutcome>)|null
+     * @var (Closure(string, list<Diagnostic>): list<DiagnosticOutcome>)|null
      */
     protected ?Closure $through = null;
 
@@ -47,11 +47,11 @@ class PendingRun
     /**
      * Execute each diagnostic group through the given callback.
      *
-     * The callback receives the group name and a closure that checks the
-     * group's diagnostics and returns their outcomes. The closure accepts
-     * two optional observers, invoked before and after each diagnostic.
+     * The callback receives the group name and its diagnostics and should
+     * return their outcomes, typically by checking each diagnostic with
+     * Doctor::check() so failures are contained per diagnostic.
      *
-     * @param  Closure(string, Closure): list<DiagnosticOutcome>  $callback
+     * @param  Closure(string, list<Diagnostic>): list<DiagnosticOutcome>  $callback
      */
     public function through(Closure $callback): self
     {
@@ -114,46 +114,15 @@ class PendingRun
         $outcomes = [];
 
         foreach ($this->doctor->selectedByGroup($this->selection) as $group => $diagnostics) {
-            $run = fn (?Closure $checking = null, ?Closure $checked = null): array => $this->checkEach(
-                $diagnostics, $checking, $checked,
-            );
-
             $outcomes = [
                 ...$outcomes,
-                ...($this->through !== null ? ($this->through)($group, $run) : $run()),
+                ...($this->through !== null
+                    ? ($this->through)($group, $diagnostics)
+                    : array_map($this->doctor->check(...), $diagnostics)),
             ];
         }
 
         return new DiagnosticReport($outcomes);
-    }
-
-    /**
-     * Check the given diagnostics.
-     *
-     * @param  list<Diagnostic>  $diagnostics
-     * @param  (Closure(Diagnostic): void)|null  $checking
-     * @param  (Closure(DiagnosticOutcome): void)|null  $checked
-     * @return list<DiagnosticOutcome>
-     */
-    protected function checkEach(array $diagnostics, ?Closure $checking, ?Closure $checked): array
-    {
-        $outcomes = [];
-
-        foreach ($diagnostics as $diagnostic) {
-            if ($checking !== null) {
-                $checking($diagnostic);
-            }
-
-            $outcome = $this->doctor->check($diagnostic);
-
-            if ($checked !== null) {
-                $checked($outcome);
-            }
-
-            $outcomes[] = $outcome;
-        }
-
-        return $outcomes;
     }
 
     /**

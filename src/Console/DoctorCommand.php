@@ -119,7 +119,7 @@ class DoctorCommand extends Command
     protected function runCli(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
         $report = $doctor->runner($selection)
-            ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->through($this->taskRunner()))
+            ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->through($this->taskRunner($doctor)))
             ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
             ->beforeRerun(function (): void {
                 $this->restorePrompts();
@@ -231,29 +231,34 @@ class DoctorCommand extends Command
 
     /**
      * Get the callback that runs each diagnostic group as a console task.
+     *
+     * @return Closure(string, list<Diagnostic>): list<DiagnosticOutcome>
      */
-    protected function taskRunner(): Closure
+    protected function taskRunner(Doctor $doctor): Closure
     {
-        return fn (string $group, Closure $run): array => task(
+        return fn (string $group, array $diagnostics): array => task(
             label: sprintf('Running %s diagnostics...', ucfirst($group)),
             limit: 0,
             keepSummary: true,
-            callback: fn (Logger $logger): array => $this->runGroupTask($run, $logger),
+            callback: fn (Logger $logger): array => $this->runGroupTask($doctor, $diagnostics, $logger),
         );
     }
 
     /**
      * Run a diagnostic group within a console task.
      *
-     * @param  Closure(?Closure, ?Closure): list<DiagnosticOutcome>  $run
+     * @param  array<Diagnostic>  $diagnostics
      * @return list<DiagnosticOutcome>
      */
-    protected function runGroupTask(Closure $run, Logger $logger): array
+    protected function runGroupTask(Doctor $doctor, array $diagnostics, Logger $logger): array
     {
-        $outcomes = $run(
-            fn (Diagnostic $diagnostic) => $logger->subLabel($diagnostic->name),
-            fn (DiagnosticOutcome $outcome) => $this->logOutcome($logger, $outcome),
-        );
+        $outcomes = [];
+
+        foreach ($diagnostics as $diagnostic) {
+            $logger->subLabel($diagnostic->name);
+
+            $this->logOutcome($logger, $outcomes[] = $doctor->check($diagnostic));
+        }
 
         $logger->subLabel('');
 

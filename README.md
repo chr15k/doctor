@@ -132,26 +132,37 @@ Doctor recognizes Laravel's conventional `local` and `production` environment na
 
 Any environment not listed is treated as `production`, so unfamiliar environments are held to the strictest expectations rather than quietly excused. Mapping an environment to an unsupported mode throws an exception, since a misconfigured Doctor cannot be trusted to diagnose anything else.
 
-Custom diagnostics may branch on the current mode:
+Custom diagnostics may branch on the current mode. Here, a `sync` queue connection passes on a developer's machine but warns in production:
 
 ```php
 use Laravel\Doctor\EnvironmentMode;
 
-if (EnvironmentMode::current()->isProduction()) {
-    return $this->warn('sync-in-production');
+public function check(): DiagnosticResult
+{
+    if (config('queue.default') !== 'sync') {
+        return $this->pass('async');
+    }
+
+    if (EnvironmentMode::current()->isProduction()) {
+        return $this->warn('sync-in-production');
+    }
+
+    return $this->pass('sync-local');
 }
 ```
+
+The `pass` and `warn` methods build results from the diagnostic's named messages, which are covered in [Creating Diagnostics](#creating-diagnostics).
 
 ## Default Diagnostics
 
 Doctor ships with a focused suite of diagnostics that cover common configuration, environment, dependency, database, queue, and storage problems. The default suite includes:
 
 - **Environment** — `.env` presence, `APP_KEY`, PHP version, required and recommended PHP extensions, and timezone.
-- **Composer** — `vendor/autoload.php` exists, Composer can dump optimized autoload files, and `composer.lock` is present and fresh.
+- **Composer** — Composer dependencies are installed before autoload validation runs, Composer can dump optimized autoload files, and `composer.lock` is present and fresh.
 - **Configuration** — configuration files can be loaded and cached, configuration values required by the active drivers are set, and bootstrap cache files are reported when their presence does not match the current environment.
-- **Database** — configured connections are reachable, the SQLite database file exists when needed, and pending migrations are reported.
+- **Database** — the default connection is reachable, the SQLite database file exists when needed, and pending migrations are reported.
 - **Cache, queue, scheduler, and session** — configured drivers are reachable, active Redis connections are checked, `sync` queues are flagged outside local environments, and registered scheduled tasks are surfaced as a notice.
-- **Storage** — configured disks are reachable, required directories are writable, and the `storage:link` symlink exists when expected.
+- **Storage** — the default filesystem disk is reachable, required directories are writable, and the `storage:link` symlink exists when expected.
 - **Security** — debug mode matches the environment, `.env` is ignored, and Composer dependencies are audited.
 
 ## Creating Diagnostics
