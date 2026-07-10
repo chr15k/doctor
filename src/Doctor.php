@@ -24,13 +24,6 @@ class Doctor
     protected array $diagnostics = [];
 
     /**
-     * The resolved diagnostic instances.
-     *
-     * @var array<class-string<Diagnostic>, Diagnostic>
-     */
-    protected array $instances = [];
-
-    /**
      * Create a new Doctor instance.
      */
     public function __construct(protected Container $container)
@@ -178,7 +171,7 @@ class Doctor
         $packages = [];
 
         foreach ($this->diagnostics as $class) {
-            $diagnostic = $this->instances[$class] ??= $this->container->make($class);
+            $diagnostic = $this->container->make($class);
 
             if ($selection !== null && ! $selection->matches($diagnostic)) {
                 continue;
