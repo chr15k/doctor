@@ -20,6 +20,9 @@ use function Laravel\Prompts\info;
 use function Laravel\Prompts\task;
 use function Laravel\Prompts\warning;
 
+/**
+ * @phpstan-import-type GroupContinuation from PendingRun
+ */
 class DoctorCommand extends Command
 {
     protected $signature = 'doctor
@@ -117,7 +120,7 @@ class DoctorCommand extends Command
     protected function runCli(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
         $report = $doctor->runner($selection)
-            ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->through($this->taskRunner($doctor)))
+            ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->observeUsing($this->taskObserver()))
             ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
             ->beforeRerun(function (): void {
                 $this->restorePrompts();
@@ -203,39 +206,39 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Get the callback that runs each diagnostic group as a console task.
+     * Get the callback that observes each diagnostic group as a console task.
      *
-     * @return Closure(string, list<Diagnostic>): list<DiagnosticOutcome>
+     * @return Closure(string, GroupContinuation): void
      */
-    protected function taskRunner(Doctor $doctor): Closure
+    protected function taskObserver(): Closure
     {
-        return fn (string $group, array $diagnostics): array => task(
-            label: sprintf('Running %s diagnostics...', ucfirst($group)),
-            limit: 0,
-            keepSummary: true,
-            callback: fn (Logger $logger): array => $this->runGroupTask($doctor, $diagnostics, $logger),
-        );
+        return function (string $group, Closure $next): void {
+            task(
+                label: sprintf('Running %s diagnostics...', ucfirst($group)),
+                limit: 0,
+                keepSummary: true,
+                callback: fn (Logger $logger) => $this->observeGroupTask($next, $logger),
+            );
+        };
     }
 
     /**
-     * Run a diagnostic group within a console task.
+     * Observe a diagnostic group within a console task.
      *
-     * @param  array<Diagnostic>  $diagnostics
-     * @return list<DiagnosticOutcome>
+     * @param  GroupContinuation  $next
      */
-    protected function runGroupTask(Doctor $doctor, array $diagnostics, Logger $logger): array
+    protected function observeGroupTask(Closure $next, Logger $logger): void
     {
-        $outcomes = [];
-
-        foreach ($diagnostics as $diagnostic) {
-            $logger->subLabel($diagnostic->name);
-
-            $this->logOutcome($logger, $outcomes[] = $doctor->check($diagnostic));
-        }
+        $next(
+            before: function (Diagnostic $diagnostic) use ($logger): void {
+                $logger->subLabel($diagnostic->name);
+            },
+            after: function (DiagnosticOutcome $outcome) use ($logger): void {
+                $this->logOutcome($logger, $outcome);
+            },
+        );
 
         $logger->subLabel('');
-
-        return $outcomes;
     }
 
     /**

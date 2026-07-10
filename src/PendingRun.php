@@ -7,17 +7,23 @@ use Illuminate\Support\Traits\Conditionable;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
+use LogicException;
 
+/**
+ * @phpstan-type BeforeDiagnostic Closure(Diagnostic): void
+ * @phpstan-type AfterDiagnostic Closure(DiagnosticOutcome): void
+ * @phpstan-type GroupContinuation Closure(BeforeDiagnostic|null $before, AfterDiagnostic|null $after): void
+ */
 class PendingRun
 {
     use Conditionable;
 
     /**
-     * The callback used to execute each diagnostic group.
+     * The callback used to observe each diagnostic group.
      *
-     * @var (Closure(string, list<Diagnostic>): list<DiagnosticOutcome>)|null
+     * @var (Closure(string, GroupContinuation): void)|null
      */
-    protected ?Closure $through = null;
+    protected ?Closure $observer = null;
 
     /**
      * The callback that determines whether a failing diagnostic should be fixed.
@@ -44,17 +50,18 @@ class PendingRun
     }
 
     /**
-     * Execute each diagnostic group through the given callback.
+     * Observe each diagnostic group through the given callback.
      *
-     * The callback receives the group name and its diagnostics and should
-     * return their outcomes, typically by checking each diagnostic with
-     * Doctor::check() so failures are contained per diagnostic.
+     * The callback receives the group name and a controlled continuation that
+     * runs the group. The continuation accepts an optional "before" callback
+     * invoked before each diagnostic and an optional "after" callback invoked
+     * with each outcome.
      *
-     * @param  Closure(string, list<Diagnostic>): list<DiagnosticOutcome>  $callback
+     * @param  Closure(string, GroupContinuation): void  $callback
      */
-    public function through(Closure $callback): self
+    public function observeUsing(Closure $callback): self
     {
-        $this->through = $callback;
+        $this->observer = $callback;
 
         return $this;
     }
@@ -115,13 +122,60 @@ class PendingRun
         foreach ($this->doctor->selectedByGroup($this->selection) as $group => $diagnostics) {
             $outcomes = [
                 ...$outcomes,
-                ...($this->through !== null
-                    ? ($this->through)($group, $diagnostics)
-                    : array_map($this->doctor->check(...), $diagnostics)),
+                ...$this->checkGroup($group, $diagnostics),
             ];
         }
 
         return new DiagnosticReport($outcomes);
+    }
+
+    /**
+     * Check a diagnostic group while allowing its progress to be observed.
+     *
+     * @param  list<Diagnostic>  $diagnostics
+     * @return list<DiagnosticOutcome>
+     */
+    protected function checkGroup(string $group, array $diagnostics): array
+    {
+        if ($this->observer === null) {
+            return $this->checkDiagnostics($diagnostics);
+        }
+
+        $outcomes = null;
+
+        ($this->observer)($group, function (?Closure $before = null, ?Closure $after = null) use (&$outcomes, $diagnostics): void {
+            $outcomes = $this->checkDiagnostics($diagnostics, $before, $after);
+        });
+
+        return $outcomes ?? throw new LogicException('A diagnostic group observer must invoke its continuation.');
+    }
+
+    /**
+     * Check the given diagnostics.
+     *
+     * @param  list<Diagnostic>  $diagnostics
+     * @param  (Closure(Diagnostic): void)|null  $before
+     * @param  (Closure(DiagnosticOutcome): void)|null  $after
+     * @return list<DiagnosticOutcome>
+     */
+    protected function checkDiagnostics(array $diagnostics, ?Closure $before = null, ?Closure $after = null): array
+    {
+        $outcomes = [];
+
+        foreach ($diagnostics as $diagnostic) {
+            if ($before !== null) {
+                $before($diagnostic);
+            }
+
+            $outcome = $this->doctor->check($diagnostic);
+            $outcomes[] = $outcome;
+
+            if ($after !== null) {
+                $after($outcome);
+            }
+        }
+
+        return $outcomes;
     }
 
     /**

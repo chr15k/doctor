@@ -254,36 +254,53 @@ it('does not re-run diagnostics when fixes are declined', function (): void {
         ->and($rerunning)->toBeFalse();
 });
 
-it('runs diagnostic groups through the given callback', function (): void {
+it('owns diagnostic execution while allowing progress to be observed', function (): void {
     $doctor = (new Doctor($this->app))->diagnostics([
         PassingDiagnostic::class,
         DatabaseDiagnostic::class,
-        WarningDiagnostic::class,
+        ThrowingDiagnostic::class,
     ]);
 
     $observed = [];
 
     $report = $doctor->runner()
-        ->through(function (string $group, array $diagnostics) use (&$observed, $doctor): array {
+        ->observeUsing(function (string $group, Closure $next) use (&$observed): void {
             $observed[] = 'group:'.$group;
 
-            return array_map(function (Diagnostic $diagnostic) use (&$observed, $doctor): DiagnosticOutcome {
-                $observed[] = class_basename($diagnostic);
-
-                return $doctor->check($diagnostic);
-            }, $diagnostics);
+            $next(
+                before: function (Diagnostic $diagnostic) use (&$observed): void {
+                    $observed[] = 'checking:'.class_basename($diagnostic);
+                },
+                after: function (DiagnosticOutcome $outcome) use (&$observed): void {
+                    $observed[] = 'result:'.$outcome->result->status->value;
+                },
+            );
         })
         ->run();
 
     expect($report->diagnostics())->toHaveCount(3)
+        ->and($report->diagnostics()[1]->result->status->value)->toBe('error')
         ->and($observed)->toBe([
             'group:testing',
-            'PassingDiagnostic',
-            'WarningDiagnostic',
+            'checking:PassingDiagnostic',
+            'result:pass',
+            'checking:ThrowingDiagnostic',
+            'result:error',
             'group:database',
-            'DatabaseDiagnostic',
+            'checking:DatabaseDiagnostic',
+            'result:pass',
         ]);
 });
+
+it('requires progress observers to continue runner-owned execution', function (): void {
+    (new Doctor($this->app))
+        ->diagnostic(PassingDiagnostic::class)
+        ->runner()
+        ->observeUsing(function (string $group, Closure $next): void {
+            // Intentionally do not continue the runner-owned execution.
+        })
+        ->run();
+})->throws(LogicException::class, 'must invoke its continuation');
 
 it('appends fixes to an existing diagnostic report', function (): void {
     $diagnostic = new PassingDiagnostic;
