@@ -161,30 +161,22 @@ class Doctor
     }
 
     /**
-     * Get the selected diagnostic instances in execution order.
+     * Get the selected diagnostic instances in registration order.
      *
      * @return list<Diagnostic>
      */
     protected function selected(?DiagnosticSelection $selection = null): array
     {
-        $application = [];
-        $packages = [];
+        $diagnostics = [];
 
         foreach ($this->diagnostics as $class) {
             $diagnostic = $this->container->make($class);
 
-            if ($selection !== null && ! $selection->matches($diagnostic)) {
-                continue;
-            }
-
-            if (DiagnosticSource::for($diagnostic)->application) {
-                $application[] = $diagnostic;
-            } else {
-                $packages[] = $diagnostic;
+            if ($selection === null || $selection->matches($diagnostic)) {
+                $diagnostics[] = $diagnostic;
             }
         }
 
-        // Package diagnostics run first so application diagnostics may build on a verified foundation...
-        return [...$packages, ...$application];
+        return $diagnostics;
     }
 }

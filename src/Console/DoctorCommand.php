@@ -67,6 +67,8 @@ class DoctorCommand extends Command
      */
     protected function format(): ?string
     {
+        // TODO: Use $this->input()->string() and friends for option retrieval once
+        // Laravel 12 support is dropped (CommandInput requires laravel/framework 13.19+)...
         $format = $this->option('format');
 
         if (! is_string($format) || ! in_array($format, ['cli', 'json', 'github'], true)) {

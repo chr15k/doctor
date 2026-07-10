@@ -108,7 +108,7 @@ it('defaults diagnostic metadata from the class name', function (): void {
         ->and($diagnostic->group)->toBe('default-metadata-diagnostic');
 });
 
-it('runs package diagnostics before application diagnostics', function (): void {
+it('runs diagnostics in registration order', function (): void {
     $doctor = (new Doctor($this->app))->diagnostics([
         PassingDiagnostic::class,
         PackagedDiagnostic::class,
@@ -117,8 +117,8 @@ it('runs package diagnostics before application diagnostics', function (): void 
     $report = $doctor->run();
 
     expect($report->diagnostics())->toHaveCount(2)
-        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PackagedDiagnostic::class)
-        ->and($report->diagnostics()[1]->diagnostic::class)->toBe(PassingDiagnostic::class);
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class)
+        ->and($report->diagnostics()[1]->diagnostic::class)->toBe(PackagedDiagnostic::class);
 });
 
 it('converts diagnostic exceptions into error results', function (): void {
