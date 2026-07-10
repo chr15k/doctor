@@ -17,7 +17,6 @@ use Laravel\Prompts\Support\Logger;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\info;
-use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\task;
 use function Laravel\Prompts\warning;
 
@@ -26,7 +25,6 @@ class DoctorCommand extends Command
     protected $signature = 'doctor
         {--only=* : Run only the specified diagnostic classes, groups, or packages}
         {--except=* : Skip the specified diagnostic classes, groups, or packages}
-        {--interactive : Choose diagnostic groups interactively}
         {--fix : Run available deterministic fixes without prompting}
         {--format=cli : Output format: cli, json, or github}
         {--fail-on=fail : Exit code threshold: fail, warn, or never}';
@@ -178,34 +176,9 @@ class DoctorCommand extends Command
      */
     protected function selection(Doctor $doctor): DiagnosticSelection
     {
-        $selection = $doctor->defaultSelection()->constrain(
+        return $doctor->defaultSelection()->constrain(
             only: $this->optionList('only'),
             except: $this->optionList('except'),
-        );
-
-        if (! $this->option('interactive') || ! $this->input->isInteractive()) {
-            return $selection;
-        }
-
-        $groups = $doctor->availableGroups($selection);
-
-        if ($groups === []) {
-            return $selection;
-        }
-
-        $selected = multiselect(
-            label: 'Which diagnostic groups should run?',
-            options: $groups,
-            default: array_values(array_intersect($selection->only, array_keys($groups))),
-            hint: 'Leave empty to run every registered group.',
-        );
-
-        if ($selected === []) {
-            return $selection;
-        }
-
-        return $selection->constrain(
-            only: array_map(strval(...), $selected),
         );
     }
 

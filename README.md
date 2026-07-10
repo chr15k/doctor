@@ -77,12 +77,6 @@ php artisan doctor --except=laravel/doctor
 php artisan doctor --except=storage
 ```
 
-You may also choose diagnostic groups interactively:
-
-```bash
-php artisan doctor --interactive
-```
-
 ## Configuring Doctor
 
 To configure persistent diagnostic selection and environment modes, publish Doctor's configuration file:

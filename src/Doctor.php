@@ -168,19 +168,6 @@ class Doctor
     }
 
     /**
-     * Get the available diagnostic groups.
-     *
-     * @return array<string, string>
-     */
-    public function availableGroups(?DiagnosticSelection $selection = null): array
-    {
-        return collect($this->selected($selection))
-            ->mapWithKeys(static fn (Diagnostic $diagnostic): array => [$diagnostic->group => ucfirst($diagnostic->group)])
-            ->sortKeys()
-            ->all();
-    }
-
-    /**
      * Get the selected diagnostic instances in execution order.
      *
      * @return list<Diagnostic>
