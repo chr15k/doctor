@@ -43,6 +43,7 @@ it('resolves diagnostic sources from the class file', function (): void {
         ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->relativeFile)->toBe('tests/Fixtures/Diagnostics/PassingDiagnostic.php')
         ->and(DiagnosticSource::resolve(PassingDiagnostic::class)->application)->toBeTrue()
         ->and(DiagnosticSource::resolve(ApplicationKeyIsSet::class)->application)->toBeFalse()
+        ->and(DiagnosticSource::resolve(Command::class)->application)->toBeFalse()
         ->and(DiagnosticSource::for(new PassingDiagnostic)->label())->toBe('laravel/doctor')
         ->and((new PassingDiagnostic)->package())->toBe('laravel/doctor')
         ->and(DiagnosticSource::for(new PassingDiagnostic)->application)->toBeTrue()

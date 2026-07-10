@@ -92,7 +92,7 @@ class DiagnosticSource
             package: $package,
             file: $file,
             relativeFile: $path !== null ? self::relativePath($path, $file) : null,
-            application: self::isApplicationSource($class, $file),
+            application: self::isApplicationSource($class, $package),
         );
     }
 
@@ -123,15 +123,15 @@ class DiagnosticSource
      *
      * @param  class-string  $class
      */
-    protected static function isApplicationSource(string $class, string $file): bool
+    protected static function isApplicationSource(string $class, ?string $package): bool
     {
         if (str_starts_with($class, 'Laravel\\Doctor\\Diagnostics\\')) {
             return false;
         }
 
-        $root = self::rootPackagePath();
+        $root = self::rootPackageName();
 
-        return $root !== null && self::contains($root, $file);
+        return $root !== null && $package === $root;
     }
 
     /**
@@ -191,15 +191,15 @@ class DiagnosticSource
     }
 
     /**
-     * Get the root Composer package path.
+     * Get the root Composer package name.
      */
-    protected static function rootPackagePath(): ?string
+    protected static function rootPackageName(): ?string
     {
-        $path = InstalledVersions::getRootPackage()['install_path'];
-
-        $realPath = realpath($path);
-
-        return $realPath === false ? null : $realPath;
+        try {
+            return InstalledVersions::getRootPackage()['name'];
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
