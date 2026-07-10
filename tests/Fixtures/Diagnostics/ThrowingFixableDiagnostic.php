@@ -8,22 +8,19 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use RuntimeException;
 
-class ThrowingFixDiagnostic extends Diagnostic implements Fixable
+class ThrowingFixableDiagnostic extends Diagnostic implements Fixable
 {
-    public string $name = 'Testing diagnostic fix throws';
+    public string $name = 'Testing fixable diagnostic throws';
 
     public string $group = 'testing';
 
     public function check(): DiagnosticResult
     {
-        return DiagnosticResult::fail('The diagnostic failed.')
-            ->fixable()
-            ->confirmUsing('Fix the testing diagnostic?')
-            ->suggest('Apply the testing diagnostic fix.');
+        throw new RuntimeException('The fixable diagnostic exploded.');
     }
 
     public function fix(DiagnosticResult $result): FixResult
     {
-        throw new RuntimeException('permission denied');
+        return FixResult::pass('The diagnostic was fixed.');
     }
 }

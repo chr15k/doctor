@@ -52,7 +52,7 @@ it('generates an application key when fixed', function (): void {
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,
-        DiagnosticResult::fail('The application key is not configured.'),
+        DiagnosticResult::fail('The application key is not configured.')->fixable(),
     ));
 
     expect($fix->result->status->value)->toBe('pass')
@@ -71,7 +71,7 @@ it('reports when the environment file has no APP_KEY variable', function (): voi
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,
-        DiagnosticResult::fail('The application key is not configured.'),
+        DiagnosticResult::fail('The application key is not configured.')->fixable(),
     ));
 
     expect($fix->result->status->value)->toBe('fail')
@@ -89,7 +89,7 @@ it('reports when the application key cannot be written to the environment file',
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new ApplicationKeyIsSet,
-        DiagnosticResult::fail('The application key is not configured.'),
+        DiagnosticResult::fail('The application key is not configured.')->fixable(),
     ));
 
     expect($fix->result->status->value)->toBe('fail')

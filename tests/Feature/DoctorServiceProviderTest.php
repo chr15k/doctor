@@ -316,6 +316,7 @@ it('renders diagnostic links in json output', function (): void {
         'file' => 'tests/Fixtures/Diagnostics/LinkedDiagnostic.php',
         'application' => true,
     ])
+        ->and($payload['diagnostics'][0]['fixable'])->toBeFalse()
         ->and($payload['diagnostics'][0]['links'])->toBe(['Laravel Docs' => 'https://laravel.com/docs'])
         ->and($exitCode)->toBe(0);
 });

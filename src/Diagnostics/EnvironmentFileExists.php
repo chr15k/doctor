@@ -26,7 +26,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
             'exists' => 'The application has an environment file.',
             'missing' => Message::make(
                 summary: 'The application does not have an environment file.',
-                confirmation: 'Would you like Doctor to copy .env.example to .env?',
+                remediation: 'Create an environment file or add .env.example as a template.',
             ),
             'missing-with-example' => Message::make(
                 summary: 'The application does not have an environment file.',
@@ -50,7 +50,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
         }
 
         if (is_file(base_path('.env.example'))) {
-            return $this->fail('missing-with-example');
+            return $this->fail('missing-with-example')->fixable();
         }
 
         return $this->fail('missing');

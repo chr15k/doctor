@@ -20,6 +20,7 @@ class FixesSharedStateDiagnostic extends Diagnostic implements Fixable
         }
 
         return DiagnosticResult::fail('The shared state needs fixing.')
+            ->fixable()
             ->suggest('Apply the shared state fix.')
             ->confirmUsing('Fix the shared state?');
     }

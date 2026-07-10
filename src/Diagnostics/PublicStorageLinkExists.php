@@ -54,7 +54,7 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
             return $this->pass('linked');
         }
 
-        return $this->fail('missing');
+        return $this->fail('missing')->fixable();
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Results;
 
 use Illuminate\Contracts\Support\Arrayable;
 use JsonSerializable;
+use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSource;
 
@@ -31,6 +32,16 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
     }
 
     /**
+     * Determine whether this outcome may be fixed.
+     */
+    public function fixable(): bool
+    {
+        return $this->diagnostic instanceof Fixable
+            && $this->result->status === Status::Fail
+            && $this->result->fixable;
+    }
+
+    /**
      * Get the array representation of the outcome.
      *
      * @return array<string, mixed>
@@ -51,6 +62,7 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
             ],
             'code' => $this->result->code,
             'status' => $this->result->status->value,
+            'fixable' => $this->fixable(),
             'summary' => $this->result->summary,
             'details' => $this->result->details,
             'remediation' => $this->result->remediation,

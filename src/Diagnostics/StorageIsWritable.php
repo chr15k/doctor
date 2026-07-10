@@ -46,6 +46,7 @@ class StorageIsWritable extends Diagnostic implements Fixable
         }
 
         return $this->fail('not-writable')
+            ->fixable()
             ->withDetails(Details::failures($failures));
     }
 

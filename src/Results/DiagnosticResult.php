@@ -7,6 +7,11 @@ namespace Laravel\Doctor\Results;
  */
 class DiagnosticResult
 {
+    /**
+     * Whether this result represents an outcome the diagnostic can fix.
+     */
+    public bool $fixable = false;
+
     public ?string $details = null;
 
     /**
@@ -119,6 +124,16 @@ class DiagnosticResult
     public function confirmUsing(string $prompt): static
     {
         $this->confirmation = $prompt;
+
+        return $this;
+    }
+
+    /**
+     * Mark this result as eligible for the diagnostic's fix.
+     */
+    public function fixable(): static
+    {
+        $this->fixable = true;
 
         return $this;
     }

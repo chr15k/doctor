@@ -45,6 +45,7 @@ it('reports a missing sqlite database file and carries the path to the fix', fun
     $fix = $diagnostic->fix($result);
 
     expect($result->status->value)->toBe('fail')
+        ->and($result->fixable)->toBeTrue()
         ->and($result->context['database'])->toBe($basePath.'/database/database.sqlite')
         ->and($fix->status->value)->toBe('pass')
         ->and(is_file($basePath.'/database/database.sqlite'))->toBeTrue()

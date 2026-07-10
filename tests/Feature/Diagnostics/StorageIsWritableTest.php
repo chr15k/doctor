@@ -77,7 +77,7 @@ it('creates missing writable storage directories when fixed', function (): void 
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         new StorageIsWritable,
-        DiagnosticResult::fail('The application cannot write to every required storage directory.'),
+        DiagnosticResult::fail('The application cannot write to every required storage directory.')->fixable(),
     ));
 
     expect($fix->result->status->value)->toBe('pass')

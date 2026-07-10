@@ -21,6 +21,7 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\ThrowingDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\ThrowingFixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\ThrowingFixDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\WarningDiagnostic;
 
@@ -138,6 +139,7 @@ it('runs a fix supplied by the diagnostic', function (): void {
     $outcome = $doctor->run()->diagnostics()[0];
 
     expect($outcome->diagnostic)->toBeInstanceOf(Fixable::class)
+        ->and($outcome->fixable())->toBeTrue()
         ->and($outcome->result->confirmation)->toBe('Fix the testing diagnostic?')
         ->and($outcome->result->remediation)->toBe('Apply the testing diagnostic fix.');
 
@@ -150,7 +152,7 @@ it('runs a fix supplied by the diagnostic', function (): void {
 it('turns fix exceptions into helpful error results', function (): void {
     $fix = (new Doctor($this->app))->fix(new DiagnosticOutcome(
         new ThrowingFixDiagnostic,
-        DiagnosticResult::fail('The diagnostic failed.'),
+        DiagnosticResult::fail('The diagnostic failed.')->fixable(),
     ));
 
     expect($fix->result->status->value)->toBe('error')
@@ -163,6 +165,38 @@ it('rejects fixes for diagnostics that are not fixable', function (): void {
         DiagnosticResult::fail('The diagnostic failed.'),
     ));
 })->throws(LogicException::class);
+
+it('rejects fixes for outcomes that are not explicitly fixable', function (): void {
+    (new Doctor($this->app))->fix(new DiagnosticOutcome(
+        new FixableDiagnostic,
+        DiagnosticResult::fail('The diagnostic failed.'),
+    ));
+})->throws(LogicException::class, 'is not fixable');
+
+it('rejects fixes for error outcomes even when marked fixable', function (): void {
+    (new Doctor($this->app))->fix(new DiagnosticOutcome(
+        new FixableDiagnostic,
+        DiagnosticResult::error('The diagnostic errored.')->fixable(),
+    ));
+})->throws(LogicException::class, 'is not fixable');
+
+it('does not offer an automatic fix after a fixable diagnostic throws', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostic(ThrowingFixableDiagnostic::class);
+    $offered = false;
+
+    $report = $doctor->runner()
+        ->fixUsing(function (DiagnosticOutcome $outcome) use (&$offered): bool {
+            $offered = true;
+
+            return true;
+        })
+        ->run();
+
+    expect($report->diagnostics()[0]->result->status->value)->toBe('error')
+        ->and($report->diagnostics()[0]->fixable())->toBeFalse()
+        ->and($report->fixes())->toBe([])
+        ->and($offered)->toBeFalse();
+});
 
 it('applies configured selectors to programmatic runs', function (): void {
     config(['doctor.only' => ['database']]);

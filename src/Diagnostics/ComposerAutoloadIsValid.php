@@ -65,6 +65,7 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
         }
 
         return $this->fail('invalid')
+            ->fixable()
             ->withDetails(trim($process->errorOutput() !== '' ? $process->errorOutput() : $process->output()));
     }
 

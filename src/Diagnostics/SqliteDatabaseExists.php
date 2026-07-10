@@ -63,6 +63,7 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
         }
 
         return $this->fail('missing')
+            ->fixable()
             ->withContext('database', $database);
     }
 

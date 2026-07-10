@@ -44,7 +44,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
             return $this->pass('configured');
         }
 
-        return $this->fail('missing');
+        return $this->fail('missing')->fixable();
     }
 
     /**

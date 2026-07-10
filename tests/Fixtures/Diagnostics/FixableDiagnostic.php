@@ -16,6 +16,7 @@ class FixableDiagnostic extends Diagnostic implements Fixable
     public function check(): DiagnosticResult
     {
         return DiagnosticResult::fail('The diagnostic failed.')
+            ->fixable()
             ->confirmUsing('Fix the testing diagnostic?')
             ->suggest('Apply the testing diagnostic fix.');
     }

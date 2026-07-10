@@ -4,7 +4,6 @@ namespace Laravel\Doctor;
 
 use Closure;
 use Illuminate\Support\Traits\Conditionable;
-use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
@@ -136,7 +135,7 @@ class PendingRun
         $fixes = [];
 
         foreach ($report->diagnostics() as $outcome) {
-            if (! $outcome->result->status->failed() || ! $outcome->diagnostic instanceof Fixable) {
+            if (! $outcome->fixable()) {
                 continue;
             }
 

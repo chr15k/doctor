@@ -169,7 +169,7 @@ Doctor ships with a focused suite of diagnostics that cover common configuration
 
 A diagnostic is a single class that, like an Artisan command, can declare its definition as properties. Extend `Laravel\Doctor\Diagnostic` and implement a `check` method that returns a `DiagnosticResult`. When `$name` or `$group` are not set, Doctor derives defaults from the class name.
 
-To offer a fix, implement the `Laravel\Doctor\Contracts\Fixable` contract. Doctor only attempts a fix on diagnostics that implement it.
+To offer a fix, implement the `Laravel\Doctor\Contracts\Fixable` contract and mark each repairable failure with `->fixable()`. Doctor only attempts fixes for explicitly fixable `fail` results from diagnostics that implement the contract. Other failures and unexpected `error` results are never fixed automatically.
 
 The following diagnostic checks whether the application key is set. Because Laravel already provides a safe key generator, it implements `Fixable`:
 
@@ -216,7 +216,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
             return $this->pass('configured');
         }
 
-        return $this->fail('missing');
+        return $this->fail('missing')->fixable();
     }
 
     public function fix(DiagnosticResult $result): FixResult
@@ -257,7 +257,7 @@ return $this->fail('unsatisfied', [
 
 Reserve tokens for short identifying values such as versions, paths, and counts. Attach unbounded evidence such as exception messages, process output, or lists of failures with `withDetails()` instead.
 
-If the check gathers state the fix will need, store it with `withContext()` on the result. Only implement `Fixable` when the repair is predictable and safe.
+If the check gathers state the fix will need, store it with `withContext()` on the result. Mark only outcomes the fix can handle with `fixable()`, and only implement `Fixable` when the repair is predictable and safe.
 
 ## Registering Diagnostics
 

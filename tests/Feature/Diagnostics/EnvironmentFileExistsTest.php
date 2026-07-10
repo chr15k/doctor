@@ -4,7 +4,6 @@ use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
-use Laravel\Doctor\Results\DiagnosticResult;
 
 function doctor_environment_base_path(): string
 {
@@ -65,9 +64,11 @@ it('copies .env.example to .env when fixed', function (): void {
 
     $this->app->setBasePath($basePath);
 
+    $diagnostic = new EnvironmentFileExists;
+
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
-        new EnvironmentFileExists,
-        DiagnosticResult::fail('The application does not have an environment file.'),
+        $diagnostic,
+        $diagnostic->check(),
     ));
 
     expect($fix->result->status->value)->toBe('pass')
@@ -77,30 +78,46 @@ it('copies .env.example to .env when fixed', function (): void {
 
 it('does not overwrite an existing .env when fixed', function (): void {
     $basePath = doctor_environment_base_path();
-    file_put_contents($basePath.'/.env', "APP_NAME=Existing\n");
     file_put_contents($basePath.'/.env.example', "APP_NAME=Example\n");
 
     $this->app->setBasePath($basePath);
 
+    $diagnostic = new EnvironmentFileExists;
+    $result = $diagnostic->check();
+
+    file_put_contents($basePath.'/.env', "APP_NAME=Existing\n");
+
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
-        new EnvironmentFileExists,
-        DiagnosticResult::fail('The application does not have an environment file.'),
+        $diagnostic,
+        $result,
     ));
 
     expect($fix->result->status->value)->toBe('pass')
         ->and(file_get_contents($basePath.'/.env'))->toBe("APP_NAME=Existing\n");
 });
 
-it('fails the fix when .env.example is missing', function (): void {
+it('does not offer a fix when .env.example is missing', function (): void {
     $basePath = doctor_environment_base_path();
 
     $this->app->setBasePath($basePath);
 
-    $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
-        new EnvironmentFileExists,
-        DiagnosticResult::fail('The application does not have an environment file.'),
-    ));
+    $offered = false;
 
-    expect($fix->result->status->value)->toBe('fail')
-        ->and($fix->result->summary)->toBe('The .env.example file does not exist.');
+    $report = $this->app->make(Doctor::class)
+        ->runner(DiagnosticSelection::make(only: ['EnvironmentFileExists']))
+        ->fixUsing(function (DiagnosticOutcome $outcome) use (&$offered): bool {
+            $offered = true;
+
+            return true;
+        })
+        ->run();
+
+    $result = $report->diagnostics()[0]->result;
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->fixable)->toBeFalse()
+        ->and($result->confirmation)->toBeNull()
+        ->and($result->remediation)->toBe('Create an environment file or add .env.example as a template.')
+        ->and($report->fixes())->toBe([])
+        ->and($offered)->toBeFalse();
 });

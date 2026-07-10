@@ -139,6 +139,10 @@ class Doctor
             throw new LogicException(sprintf('Diagnostic [%s] does not implement [%s].', $diagnostic::class, Fixable::class));
         }
 
+        if (! $outcome->fixable()) {
+            throw new LogicException(sprintf('Diagnostic outcome [%s] is not fixable.', $outcome->result->code ?? $diagnostic::class));
+        }
+
         try {
             $result = $diagnostic->fix($outcome->result);
         } catch (Throwable $e) {
