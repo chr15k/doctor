@@ -212,6 +212,39 @@ it('applies configured selectors to programmatic runs', function (): void {
         ->and($report->diagnostics()[0]->diagnostic::class)->toBe(DatabaseDiagnostic::class);
 });
 
+it('constrains runs with fluent only and except selectors', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostics([
+        PassingDiagnostic::class,
+        DatabaseDiagnostic::class,
+        PackagedDiagnostic::class,
+    ]);
+
+    $report = $doctor->runner()
+        ->only('testing')
+        ->except('vendor/package')
+        ->run();
+
+    expect($report->diagnostics())->toHaveCount(1)
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class);
+});
+
+it('intersects repeated fluent only constraints', function (): void {
+    config(['doctor.only' => ['testing']]);
+
+    $doctor = (new Doctor($this->app))->diagnostics([
+        PassingDiagnostic::class,
+        DatabaseDiagnostic::class,
+        PackagedDiagnostic::class,
+    ]);
+
+    $report = $doctor->runner()
+        ->only(PassingDiagnostic::class, DatabaseDiagnostic::class)
+        ->run();
+
+    expect($report->diagnostics())->toHaveCount(1)
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class);
+});
+
 it('applies approved fixes and re-runs the diagnostics', function (): void {
     config(['doctor-testing.shared-state-fixed' => false]);
 

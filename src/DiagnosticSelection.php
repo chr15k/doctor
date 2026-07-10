@@ -9,14 +9,14 @@ class DiagnosticSelection
      *
      * @var list<string>
      */
-    public readonly array $only;
+    protected readonly array $only;
 
     /**
      * The normalized selectors diagnostics must not match.
      *
      * @var list<string>
      */
-    public readonly array $except;
+    protected readonly array $except;
 
     /**
      * The normalized only constraints that must all match.

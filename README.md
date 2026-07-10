@@ -301,13 +301,16 @@ if ($report->hasFailures()) {
 }
 ```
 
-Programmatic runs honor the `only` and `except` selectors from Doctor's configuration file. To run a different set of diagnostics, pass a `DiagnosticSelection`:
+Programmatic runs honor the `only` and `except` selectors from Doctor's configuration file. To narrow a run further, build it using the `runner` method and constrain it with `only` and `except`. Selectors may reference a diagnostic class, class basename, group, or package name — the same values accepted by the command's `--only` and `--except` options:
 
 ```php
-use Laravel\Doctor\DiagnosticSelection;
-
-$report = Doctor::run(DiagnosticSelection::make(only: ['security']));
+$report = Doctor::runner()
+    ->only('security')
+    ->except(SomeDiagnostic::class)
+    ->run();
 ```
+
+Repeated `only` calls intersect, so each call narrows the run within the previous constraints.
 
 To apply fixes as part of a run, build the run using the `runner` method. The `fixUsing` callback receives each failing diagnostic that offers a fix and determines whether the fix should be applied. When any fixes are applied, Doctor re-runs the diagnostics so the report reflects the repaired application:
 

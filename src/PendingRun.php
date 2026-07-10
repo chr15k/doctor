@@ -50,6 +50,29 @@ class PendingRun
     }
 
     /**
+     * Constrain the run to diagnostics matching the given selectors.
+     *
+     * Selectors may reference a diagnostic class, class basename, group, or
+     * package name. Repeated calls intersect with previous constraints.
+     */
+    public function only(string ...$selectors): self
+    {
+        $this->selection = $this->selection->constrain(only: $selectors);
+
+        return $this;
+    }
+
+    /**
+     * Exclude diagnostics matching the given selectors from the run.
+     */
+    public function except(string ...$selectors): self
+    {
+        $this->selection = $this->selection->constrain(except: $selectors);
+
+        return $this;
+    }
+
+    /**
      * Observe each diagnostic group through the given callback.
      *
      * The callback receives the group name and a controlled continuation that
