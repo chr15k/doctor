@@ -15,6 +15,7 @@ use Laravel\Prompts\Elements\ElementContract;
 use function Laravel\Prompts\callout;
 use function Laravel\Prompts\error;
 use function Laravel\Prompts\info;
+use function Laravel\Prompts\intro;
 use function Laravel\Prompts\warning;
 
 class CliRenderer
@@ -32,6 +33,8 @@ class CliRenderer
      */
     public function render(DiagnosticReport $report): void
     {
+        intro('Results');
+
         $verbose = $this->output->isVerbose();
         $notices = [];
 

@@ -88,6 +88,7 @@ it('does not repeat diagnostics that were fixed', function (): void {
     expect(file_get_contents($environmentPath.'/.env'))
         ->toContain('APP_KEY=base64:')
         ->and($contents)->toContain('Re-running diagnostics after applying fixes...')
+        ->and($contents)->toMatch('/Re-running diagnostics after applying fixes\.\.\..*Results.*App key is set/s')
         ->and($contents)->toContain('App key is set: The application key was generated.')
         ->and($contents)->toContain('All diagnostics passed or were fixed.')
         ->and($exitCode)->toBe(0);
@@ -164,6 +165,7 @@ it('renders issue callout sources with package footer', function (): void {
     ], $output);
 
     expect($output->fetch())
+        ->toContain('Results')
         ->toContain('The application key is not configured.')
         ->toContain('Suggested fix')
         ->toContain('Generate an application key with')
