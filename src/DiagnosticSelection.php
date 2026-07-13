@@ -28,9 +28,9 @@ class DiagnosticSelection
     /**
      * Create a new diagnostic selection instance.
      *
-     * @param  iterable<string>  $only
-     * @param  iterable<string>  $except
-     * @param  list<iterable<string>>  $onlyConstraints
+     * @param  iterable<array-key, string>  $only
+     * @param  iterable<array-key, string>  $except
+     * @param  list<iterable<array-key, string>>  $onlyConstraints
      */
     public function __construct(
         iterable $only = [],
@@ -60,8 +60,8 @@ class DiagnosticSelection
     /**
      * Create a new normalized diagnostic selection.
      *
-     * @param  iterable<string>  $only
-     * @param  iterable<string>  $except
+     * @param  iterable<array-key, string>  $only
+     * @param  iterable<array-key, string>  $except
      */
     public static function make(iterable $only = [], iterable $except = []): self
     {
@@ -71,8 +71,8 @@ class DiagnosticSelection
     /**
      * Add another selection constraint.
      *
-     * @param  iterable<string>  $only
-     * @param  iterable<string>  $except
+     * @param  iterable<array-key, string>  $only
+     * @param  iterable<array-key, string>  $except
      */
     public function constrain(iterable $only = [], iterable $except = []): self
     {
@@ -110,7 +110,7 @@ class DiagnosticSelection
     /**
      * Normalize selection values.
      *
-     * @param  iterable<string>  $values
+     * @param  iterable<array-key, string>  $values
      * @return list<string>
      */
     protected static function normalize(iterable $values): array
