@@ -30,7 +30,7 @@ class QueueConnectionIsAsynchronous extends Diagnostic
             'async' => 'Queued jobs are processed asynchronously.',
             'async-local' => Message::make(
                 summary: 'Queued jobs are processed asynchronously.',
-                remediation: 'Make sure a queue worker is running with `php artisan queue:work` if jobs are not being processed.',
+                remediation: 'If jobs are not being processed, make sure a queue worker is running via `php artisan queue:work`.',
             ),
         ];
     }

@@ -36,5 +36,5 @@ it('reports pending migrations', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('2024_01_01_000000_create_users_table')
-        ->and($result->remediation)->toBe('Run pending database migrations.');
+        ->and($result->remediation)->toBe('Run `php artisan migrate` to apply the pending migrations.');
 });

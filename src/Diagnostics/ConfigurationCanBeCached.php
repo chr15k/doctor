@@ -28,7 +28,7 @@ class ConfigurationCanBeCached extends Diagnostic
         return [
             'cannot-cache' => Message::make(
                 summary: 'The application configuration cannot be cached.',
-                remediation: 'Remove non-serializable values from configuration files before running `php artisan config:cache`.',
+                remediation: 'Remove closures and other non-serializable values from the configuration files before running `php artisan config:cache`.',
             ),
             'can-cache' => 'The application configuration can be cached.',
         ];

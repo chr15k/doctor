@@ -29,7 +29,7 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
             'exists' => 'The SQLite database file exists.',
             'missing' => Message::make(
                 summary: 'The SQLite database file does not exist.',
-                remediation: 'Create the SQLite database file at the configured path.',
+                remediation: 'Create the SQLite database file with `touch {database}`.',
                 confirmation: 'Create the SQLite database file?',
             ),
             'already-exists' => 'The SQLite database file already exists.',
@@ -62,7 +62,7 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
                 ->withContext('database', $database);
         }
 
-        return $this->fail('missing')
+        return $this->fail('missing', ['database' => $database])
             ->fixable()
             ->withContext('database', $database);
     }

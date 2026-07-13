@@ -33,7 +33,7 @@ class RecommendedPhpExtensionsAreLoaded extends Diagnostic
             'installed' => 'All Composer-suggested PHP extensions are installed.',
             'missing' => Message::make(
                 summary: 'Some Composer-suggested PHP extensions are missing.',
-                remediation: 'Install the missing PHP extensions when the related optional features are used.',
+                remediation: 'Install the suggested extensions if the application uses the features that depend on them.',
             ),
         ];
     }

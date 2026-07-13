@@ -27,7 +27,7 @@ class ApplicationTimezoneIsValid extends Diagnostic
             'valid' => 'The application has a valid timezone.',
             'invalid' => Message::make(
                 summary: 'The application timezone [{timezone}] is not a valid PHP timezone.',
-                remediation: 'Set app.timezone to one of PHP\'s supported timezone identifiers.',
+                remediation: 'Set APP_TIMEZONE or app.timezone to a valid PHP timezone.',
             ),
         ];
     }

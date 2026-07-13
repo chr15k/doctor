@@ -27,7 +27,7 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
             'set' => 'Every configuration value required by the active drivers is set.',
             'missing' => Message::make(
                 summary: 'Some configuration values required by the active drivers are not set.',
-                remediation: 'Set the missing configuration values, typically by defining their environment variables in the application environment.',
+                remediation: 'Set the missing values, typically by defining their environment variables in .env or the deployment environment.',
             ),
         ];
     }

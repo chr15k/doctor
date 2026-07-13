@@ -27,7 +27,7 @@ class ComposerAuditPasses extends Diagnostic
             'lock-missing' => 'The application does not have a composer.lock file.',
             'vulnerable' => Message::make(
                 summary: 'Composer audit found vulnerable dependencies.',
-                remediation: 'Run `composer audit` and update or replace vulnerable dependencies.',
+                remediation: 'Update or replace the vulnerable packages reported by `composer audit`.',
             ),
             'audit-failed' => Message::make(
                 summary: 'Composer audit could not be completed.',

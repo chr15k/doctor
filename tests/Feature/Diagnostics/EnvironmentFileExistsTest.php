@@ -55,7 +55,7 @@ it('reports a missing environment file with guidance when an example exists', fu
     expect($outcome->result->status->value)->toBe('fail')
         ->and($outcome->result->summary)->toBe('The application does not have an environment file.')
         ->and($outcome->result->confirmation)->toBe('Copy .env.example to .env?')
-        ->and($outcome->result->remediation)->toBe('Copy the example environment file to .env, then review its values.');
+        ->and($outcome->result->remediation)->toBe('Run `cp .env.example .env`, then review the copied values.');
 });
 
 it('copies .env.example to .env when fixed', function (): void {
@@ -117,7 +117,7 @@ it('does not offer a fix when .env.example is missing', function (): void {
     expect($result->status->value)->toBe('fail')
         ->and($result->fixable)->toBeFalse()
         ->and($result->confirmation)->toBeNull()
-        ->and($result->remediation)->toBe('Create an environment file or add .env.example as a template.')
+        ->and($result->remediation)->toBe("Create a .env file with the application's environment variables.")
         ->and($report->fixes())->toBe([])
         ->and($offered)->toBeFalse();
 });

@@ -325,6 +325,7 @@ class CliRenderer
         $content = [$outcome->result->summary];
 
         if ($outcome->result->details !== null) {
+            $content[] = Element::heading('Details');
             $content[] = $outcome->result->details;
         }
 

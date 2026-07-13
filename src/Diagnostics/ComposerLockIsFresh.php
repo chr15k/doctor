@@ -26,12 +26,16 @@ class ComposerLockIsFresh extends Diagnostic
             'composer-missing' => 'The application does not have a composer.json file.',
             'lock-missing' => Message::make(
                 summary: 'The application does not have a composer.lock file.',
-                remediation: 'Commit a composer.lock file so deployments install the same dependencies.',
+                remediation: 'Run `composer install` to generate a composer.lock file.',
             ),
             'fresh' => 'composer.lock is present and fresh.',
             'stale' => Message::make(
-                summary: 'composer.lock is missing or out of date.',
-                remediation: 'Refresh the lock file metadata without changing installed package versions.',
+                summary: 'composer.lock is out of date with composer.json.',
+                remediation: 'Run `composer update --lock` to refresh the lock file.',
+            ),
+            'constraint-mismatch' => Message::make(
+                summary: 'composer.lock does not satisfy the package constraints in composer.json.',
+                remediation: 'Run `composer update {packages}` to lock versions that satisfy composer.json.',
             ),
             'inspection-failed' => Message::make(
                 summary: 'Composer could not verify composer.lock freshness.',
@@ -60,6 +64,7 @@ class ComposerLockIsFresh extends Diagnostic
             '--no-check-publish',
             '--no-check-all',
             '--no-interaction',
+            '--no-ansi',
         ]);
 
         if ($process->successful()) {
@@ -72,9 +77,14 @@ class ComposerLockIsFresh extends Diagnostic
             'Composer exited without lock file details.',
         );
 
+        if (($packages = $this->mismatchedPackages($details)) !== []) {
+            return $this->fail('constraint-mismatch', ['packages' => implode(' ', $packages)])
+                ->withDetails($this->lockFileErrors($details) ?? $details);
+        }
+
         if ($this->reportsStaleLock($details)) {
             return $this->fail('stale')
-                ->withDetails($details);
+                ->withDetails($this->lockFileErrors($details) ?? $details);
         }
 
         return $this->fail('inspection-failed')
@@ -100,7 +110,36 @@ class ComposerLockIsFresh extends Diagnostic
     private function reportsStaleLock(string $details): bool
     {
         return str_contains($details, '# Lock file errors')
-            || str_contains($details, 'lock file is not up to date')
-            || str_contains($details, 'not present in the lock file');
+            || str_contains($details, 'lock file is not up to date');
+    }
+
+    /**
+     * Extract the factual lock file error lines from Composer's validation output.
+     *
+     * Composer intersperses its own remediation advice and documentation links
+     * with the errors; only the "- " bulleted error lines state what is wrong.
+     */
+    private function lockFileErrors(string $details): ?string
+    {
+        $errors = str($details)
+            ->explode(PHP_EOL)
+            ->map(static fn (string $line): string => trim($line))
+            ->filter(static fn (string $line): bool => str_starts_with($line, '- '))
+            ->map(static fn (string $line): string => (string) str($line)->before(', it is recommended')->finish('.'))
+            ->implode(PHP_EOL);
+
+        return $errors === '' ? null : $errors;
+    }
+
+    /**
+     * Get the packages whose locked versions no longer satisfy composer.json.
+     *
+     * @return list<string>
+     */
+    private function mismatchedPackages(string $details): array
+    {
+        preg_match_all('/Required (?:dev )?package "([^"]+)"/', $details, $matches);
+
+        return array_values(array_unique($matches[1]));
     }
 }

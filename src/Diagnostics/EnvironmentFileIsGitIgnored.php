@@ -23,12 +23,12 @@ class EnvironmentFileIsGitIgnored extends Diagnostic
         return [
             'gitignore-missing' => Message::make(
                 summary: 'The application does not have a .gitignore file.',
-                remediation: 'Add .env to .gitignore so secrets are not committed.',
+                remediation: 'Create a .gitignore file that includes .env so secrets are not committed.',
             ),
             'ignored' => 'Environment files are ignored by Git.',
             'not-ignored' => Message::make(
                 summary: 'Environment files are not ignored by Git.',
-                remediation: 'Add .env or .env* to .gitignore.',
+                remediation: 'Add .env to .gitignore so secrets are not committed.',
             ),
         ];
     }

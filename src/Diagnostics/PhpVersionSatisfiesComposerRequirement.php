@@ -34,7 +34,7 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
             'satisfied' => 'The current PHP version satisfies composer.json.',
             'unsatisfied' => Message::make(
                 summary: 'PHP {version} does not satisfy [{constraint}].',
-                remediation: 'Use a PHP binary that satisfies the composer.json PHP constraint.',
+                remediation: 'Switch to a PHP version that satisfies [{constraint}], or update the constraint in composer.json.',
             ),
         ];
     }

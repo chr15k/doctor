@@ -26,13 +26,13 @@ class MigrationsAreUpToDate extends Diagnostic
             'no-files' => 'The application does not have migration files.',
             'repository-missing' => Message::make(
                 summary: 'The migrations table does not exist.',
-                remediation: 'Create the migrations table and run pending migrations.',
+                remediation: 'Run `php artisan migrate` to create the migrations table and apply the migrations.',
             ),
             'inspection-failed' => 'The application could not inspect database migrations.',
             'current' => 'Database migrations are current.',
             'pending' => Message::make(
                 summary: 'Database migrations are pending.',
-                remediation: 'Run pending database migrations.',
+                remediation: 'Run `php artisan migrate` to apply the pending migrations.',
             ),
         ];
     }

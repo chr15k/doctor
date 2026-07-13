@@ -41,6 +41,7 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
+use Laravel\Prompts\Elements\Element;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
@@ -151,6 +152,31 @@ it('formats interactive fix callouts without remediation or confirmation text', 
     expect($renderer->content($outcome))->toBe(['The diagnostic failed.'])
         ->and($command->prompt($outcome))->toBe('Fix the testing diagnostic?')
         ->and($command->prompt($outcomeWithoutConfirmation))->toBe('Fix "Testing diagnostic is fixable"?');
+});
+
+it('renders issue details under a heading distinct from the suggested fix', function (): void {
+    $renderer = new class(new OutputStyle(new ArrayInput([]), new NullOutput)) extends CliRenderer
+    {
+        public function content(DiagnosticOutcome $outcome): array
+        {
+            return $this->diagnosticCalloutContent($outcome);
+        }
+    };
+
+    $outcome = new DiagnosticOutcome(
+        new FixableDiagnostic,
+        DiagnosticResult::fail('The diagnostic failed.')
+            ->withDetails('- The lock file is not up to date with the latest changes in composer.json.')
+            ->suggest('Run `composer update --lock`.'),
+    );
+
+    expect($renderer->content($outcome))->toEqual([
+        'The diagnostic failed.',
+        Element::heading('Details'),
+        '- The lock file is not up to date with the latest changes in composer.json.',
+        Element::heading('Suggested fix'),
+        'Run `composer update --lock`.',
+    ]);
 });
 
 it('renders issue callout sources with package footer', function (): void {

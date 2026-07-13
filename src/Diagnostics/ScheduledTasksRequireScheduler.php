@@ -24,7 +24,7 @@ class ScheduledTasksRequireScheduler extends Diagnostic
             'no-tasks' => 'The application does not have scheduled tasks.',
             'tasks-registered' => Message::make(
                 summary: 'The application has scheduled tasks.',
-                remediation: 'Make sure the scheduler is running with `php artisan schedule:run` every minute or `php artisan schedule:work` during development.',
+                remediation: 'Run `php artisan schedule:run` from cron every minute in production, or `php artisan schedule:work` locally.',
             ),
         ];
     }
