@@ -33,8 +33,11 @@ use Laravel\Doctor\Diagnostics\StorageIsWritable;
 use Laravel\Doctor\DoctorServiceProvider;
 use Laravel\Doctor\Facades\Doctor;
 use Laravel\Doctor\Renderers\CliRenderer;
+use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Status;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
@@ -90,7 +93,9 @@ it('does not repeat diagnostics that were fixed', function (): void {
         ->toContain('APP_KEY=base64:')
         ->and($contents)->toContain('Re-running diagnostics after applying fixes...')
         ->and($contents)->toMatch('/Re-running diagnostics after applying fixes\.\.\..*Results.*App key is set/s')
-        ->and($contents)->toContain('App key is set: The application key was generated.')
+        ->and($contents)->toContain('App key is set')
+        ->and($contents)->toContain('The application key was generated.')
+        ->and($contents)->not->toContain('App key is set: The application key was generated.')
         ->and($contents)->toContain('All diagnostics passed or were fixed.')
         ->and($exitCode)->toBe(0);
 });
@@ -109,7 +114,7 @@ it('reruns diagnostics after applying fixes', function (): void {
     ], $output);
 
     expect($output->fetch())
-        ->toContain('Fix')
+        ->not->toContain('Fix')
         ->toContain('Re-running diagnostics after applying fixes...')
         ->toContain('Testing diagnostic fixes shared state')
         ->toContain('The shared state fix')
@@ -118,6 +123,58 @@ it('reruns diagnostics after applying fixes', function (): void {
         ->not->toContain('[pass] fix')
         ->not->toContain('The shared state is still broken.')
         ->and($exitCode)->toBe(0);
+});
+
+it('merges a failed fix into the diagnostic issue callout', function (): void {
+    config(['app.key' => '']);
+
+    $environmentPath = sys_get_temp_dir().'/laravel-doctor-key-fail-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($environmentPath, 0775, true);
+
+    $this->app->useEnvironmentPath($environmentPath);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'ApplicationKeyIsSet',
+        '--fix' => true,
+    ], $output);
+
+    $contents = $output->fetch();
+
+    expect($contents)
+        ->toContain('The application key is not configured.')
+        ->toContain('Fix failed')
+        ->toContain('The application key could not be generated.')
+        ->toContain('could not be updated')
+        ->not->toContain('Suggested fix')
+        ->toContain('Doctor found failing diagnostics.')
+        ->and(substr_count($contents, 'The application key could not be generated.'))->toBe(1)
+        ->and($exitCode)->toBe(1);
+});
+
+it('escalates warning issue callouts to errors when their fix failed', function (): void {
+    $renderer = new class(new OutputStyle(new ArrayInput([]), new NullOutput)) extends CliRenderer
+    {
+        public function type(DiagnosticOutcome $outcome, ?DiagnosticFixOutcome $failedFix): string
+        {
+            return $this->issueCalloutType($outcome, $failedFix);
+        }
+    };
+
+    $outcome = new DiagnosticOutcome(
+        new FixableDiagnostic,
+        DiagnosticResult::warn('The diagnostic partially improved.'),
+    );
+
+    $failedFix = new DiagnosticFixOutcome(
+        new FixableDiagnostic,
+        new FixResult(Status::Fail, 'The fix failed.'),
+    );
+
+    expect($renderer->type($outcome, null))->toBe('warning')
+        ->and($renderer->type($outcome, $failedFix))->toBe('error');
 });
 
 it('formats interactive fix callouts without remediation or confirmation text', function (): void {

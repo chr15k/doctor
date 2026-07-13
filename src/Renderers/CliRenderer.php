@@ -37,6 +37,8 @@ class CliRenderer
 
         $verbose = $this->output->isVerbose();
         $notices = [];
+        $failedFixes = $this->failedFixesByDiagnostic($report->fixes());
+        $mergedFixes = [];
 
         foreach ($report->diagnostics() as $outcome) {
             if ($outcome->result->status === Status::Notice) {
@@ -46,7 +48,13 @@ class CliRenderer
             }
 
             if ($this->isReportableIssue($outcome)) {
-                $this->renderIssue($outcome);
+                $failedFix = $failedFixes[$outcome->diagnostic::class] ?? null;
+
+                if ($failedFix !== null) {
+                    $mergedFixes[] = $failedFix;
+                }
+
+                $this->renderIssue($outcome, $failedFix);
 
                 continue;
             }
@@ -67,7 +75,10 @@ class CliRenderer
         }
 
         $this->renderNotices($notices);
-        $this->renderFixes($report->fixes());
+        $this->renderFixes(array_values(array_filter(
+            $report->fixes(),
+            static fn (DiagnosticFixOutcome $fix): bool => ! in_array($fix, $mergedFixes, true),
+        )));
 
         if ($report->hasFailures()) {
             error('Doctor found failing diagnostics.');
@@ -114,14 +125,45 @@ class CliRenderer
     /**
      * Render an issue diagnostic as a callout.
      */
-    protected function renderIssue(DiagnosticOutcome $outcome): void
+    protected function renderIssue(DiagnosticOutcome $outcome, ?DiagnosticFixOutcome $failedFix = null): void
     {
         callout(
             label: $outcome->diagnostic->name,
-            content: $this->diagnosticCalloutContent($outcome),
-            type: $outcome->result->status === Status::Warn ? 'warning' : 'error',
+            content: $this->diagnosticCalloutContent($outcome, failedFix: $failedFix),
+            type: $this->issueCalloutType($outcome, $failedFix),
             info: $outcome->source()->label(),
         );
+    }
+
+    /**
+     * Get the callout type for an issue, escalating when a fix failed.
+     */
+    protected function issueCalloutType(DiagnosticOutcome $outcome, ?DiagnosticFixOutcome $failedFix): string
+    {
+        if ($failedFix !== null) {
+            return 'error';
+        }
+
+        return $outcome->result->status === Status::Warn ? 'warning' : 'error';
+    }
+
+    /**
+     * Key the failed fixes by the diagnostic that attempted them.
+     *
+     * @param  list<DiagnosticFixOutcome>  $fixes
+     * @return array<class-string, DiagnosticFixOutcome>
+     */
+    protected function failedFixesByDiagnostic(array $fixes): array
+    {
+        $failed = [];
+
+        foreach ($fixes as $fix) {
+            if ($fix->result->status->failed()) {
+                $failed[$fix->diagnostic::class] = $fix;
+            }
+        }
+
+        return $failed;
     }
 
     /**
@@ -241,7 +283,7 @@ class CliRenderer
 
         foreach ($this->fixesBySource($fixes) as $source => $sourceFixes) {
             callout(
-                label: Str::plural('Fix', count($sourceFixes)),
+                label: count($sourceFixes) === 1 ? $sourceFixes[0]->diagnostic->name : 'Fixes',
                 content: $this->fixesCalloutContent($sourceFixes),
                 type: $this->fixesCalloutType($sourceFixes),
                 info: $source,
@@ -270,7 +312,7 @@ class CliRenderer
     protected function fixesCalloutContent(array $fixes): array
     {
         if (count($fixes) === 1) {
-            return [$this->fixItem($fixes[0])];
+            return [$this->fixSummary($fixes[0])];
         }
 
         return [Element::bulletedList(array_map(
@@ -284,9 +326,15 @@ class CliRenderer
      */
     protected function fixItem(DiagnosticFixOutcome $outcome): string
     {
-        $parts = [
-            sprintf('%s: %s', $outcome->diagnostic->name, $outcome->result->summary),
-        ];
+        return sprintf('%s: %s', $outcome->diagnostic->name, $this->fixSummary($outcome));
+    }
+
+    /**
+     * Format a fix outcome's summary and details as a single line.
+     */
+    protected function fixSummary(DiagnosticFixOutcome $outcome): string
+    {
+        $parts = [$outcome->result->summary];
 
         if ($outcome->result->details !== null) {
             $parts[] = $outcome->result->details;
@@ -320,7 +368,7 @@ class CliRenderer
      *
      * @return list<string|ElementContract>
      */
-    protected function diagnosticCalloutContent(DiagnosticOutcome $outcome, bool $includeRemediation = true): array
+    protected function diagnosticCalloutContent(DiagnosticOutcome $outcome, bool $includeRemediation = true, ?DiagnosticFixOutcome $failedFix = null): array
     {
         $content = [$outcome->result->summary];
 
@@ -329,7 +377,12 @@ class CliRenderer
             $content[] = $outcome->result->details;
         }
 
-        if ($includeRemediation && $outcome->result->remediation !== null) {
+        if ($failedFix !== null) {
+            $content[] = Element::heading('Fix failed');
+            $content[] = $this->fixSummary($failedFix);
+        }
+
+        if ($includeRemediation && $failedFix === null && $outcome->result->remediation !== null) {
             $content[] = Element::heading('Suggested fix');
             $content[] = $outcome->result->remediation;
         }
