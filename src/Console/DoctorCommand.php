@@ -296,7 +296,7 @@ class DoctorCommand extends Command
     protected function confirmationPrompt(DiagnosticOutcome $outcome): string
     {
         return $outcome->result->confirmation
-            ?? sprintf('Would you like Doctor to fix "%s"?', $outcome->diagnostic->name);
+            ?? sprintf('Fix "%s"?', $outcome->diagnostic->name);
     }
 
     /**

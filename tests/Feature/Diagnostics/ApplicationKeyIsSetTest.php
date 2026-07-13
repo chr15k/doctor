@@ -39,7 +39,7 @@ it('reports a missing application key', function (): void {
     expect($outcome->result->status->value)->toBe('fail')
         ->and($outcome->result->code)->toBe('application-key-is-set.missing')
         ->and($outcome->result->summary)->toBe('The application key is not configured.')
-        ->and($outcome->result->confirmation)->toBe('Would you like Doctor to generate an application key using `php artisan key:generate`?')
+        ->and($outcome->result->confirmation)->toBe('Generate an application key using `php artisan key:generate`?')
         ->and($outcome->result->remediation)->toBe('Generate an application key with `php artisan key:generate`.');
 });
 

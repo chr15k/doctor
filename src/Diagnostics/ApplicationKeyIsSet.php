@@ -28,7 +28,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
             'missing' => Message::make(
                 summary: 'The application key is not configured.',
                 remediation: 'Generate an application key with `php artisan key:generate`.',
-                confirmation: 'Would you like Doctor to generate an application key using `php artisan key:generate`?',
+                confirmation: 'Generate an application key using `php artisan key:generate`?',
             ),
             'generated' => 'The application key was generated.',
             'generation-failed' => 'The application key could not be generated.',

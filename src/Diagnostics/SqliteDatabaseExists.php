@@ -30,7 +30,7 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
             'missing' => Message::make(
                 summary: 'The SQLite database file does not exist.',
                 remediation: 'Create the SQLite database file at the configured path.',
-                confirmation: 'Would you like Doctor to create the SQLite database file?',
+                confirmation: 'Create the SQLite database file?',
             ),
             'already-exists' => 'The SQLite database file already exists.',
             'creation-failed' => 'The SQLite database file could not be created.',

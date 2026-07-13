@@ -32,7 +32,7 @@ When a failing diagnostic can be fixed, Doctor reports the problem and prompts b
 ```text
 Storage is writable: The application cannot write to every required storage directory.
 
- Would you like Doctor to make the storage directories writable? (yes/no) [yes]
+ Make the storage directories writable? (yes/no) [yes]
 ```
 
 To run available fixes without prompting, pass the `--fix` option:
@@ -193,7 +193,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
             'missing' => Message::make(
                 summary: 'The application key is not configured.',
                 remediation: 'Generate an application key with `php artisan key:generate`.',
-                confirmation: 'Would you like Doctor to generate an application key using `php artisan key:generate`?',
+                confirmation: 'Generate an application key using `php artisan key:generate`?',
             ),
 
             'generated' => 'The application key was generated.',

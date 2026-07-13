@@ -30,7 +30,7 @@ class ComposerAutoloadIsValid extends Diagnostic implements Fixable
             'invalid' => Message::make(
                 summary: 'Composer cannot generate valid autoload files.',
                 remediation: 'Regenerate Composer autoload files with `composer dump-autoload`.',
-                confirmation: 'Would you like Doctor to regenerate Composer autoload files using `composer dump-autoload`?',
+                confirmation: 'Regenerate Composer autoload files using `composer dump-autoload`?',
             ),
             'regeneration-failed' => 'Composer autoload files could not be regenerated.',
             'regenerated' => 'Composer autoload files were regenerated.',

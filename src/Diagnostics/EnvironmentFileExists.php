@@ -31,7 +31,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
             'missing-with-example' => Message::make(
                 summary: 'The application does not have an environment file.',
                 remediation: 'Copy the example environment file to .env, then review its values.',
-                confirmation: 'Would you like Doctor to copy .env.example to .env?',
+                confirmation: 'Copy .env.example to .env?',
             ),
             'already-exists' => 'The .env file already exists.',
             'example-missing' => 'The .env.example file does not exist.',

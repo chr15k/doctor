@@ -54,7 +54,7 @@ it('reports a missing environment file with guidance when an example exists', fu
 
     expect($outcome->result->status->value)->toBe('fail')
         ->and($outcome->result->summary)->toBe('The application does not have an environment file.')
-        ->and($outcome->result->confirmation)->toBe('Would you like Doctor to copy .env.example to .env?')
+        ->and($outcome->result->confirmation)->toBe('Copy .env.example to .env?')
         ->and($outcome->result->remediation)->toBe('Copy the example environment file to .env, then review its values.');
 });
 

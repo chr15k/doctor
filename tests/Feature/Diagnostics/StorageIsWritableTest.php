@@ -66,7 +66,7 @@ it('reports missing writable storage directories', function (): void {
 
     expect($outcome->result->status->value)->toBe('fail')
         ->and($outcome->result->details)->toContain('storage/: directory does not exist')
-        ->and($outcome->result->confirmation)->toBe('Would you like Doctor to make the storage directories writable?')
+        ->and($outcome->result->confirmation)->toBe('Make the storage directories writable?')
         ->and($outcome->result->remediation)->toBe('Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.');
 });
 

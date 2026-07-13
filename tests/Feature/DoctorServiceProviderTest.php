@@ -142,8 +142,14 @@ it('formats interactive fix callouts without remediation or confirmation text', 
             ->confirmUsing('Fix the testing diagnostic?'),
     );
 
+    $outcomeWithoutConfirmation = new DiagnosticOutcome(
+        new FixableDiagnostic,
+        DiagnosticResult::fail('The diagnostic failed.')->fixable(),
+    );
+
     expect($renderer->content($outcome))->toBe(['The diagnostic failed.'])
-        ->and($command->prompt($outcome))->toBe('Fix the testing diagnostic?');
+        ->and($command->prompt($outcome))->toBe('Fix the testing diagnostic?')
+        ->and($command->prompt($outcomeWithoutConfirmation))->toBe('Fix "Testing diagnostic is fixable"?');
 });
 
 it('renders issue callout sources with package footer', function (): void {
@@ -164,7 +170,7 @@ it('renders issue callout sources with package footer', function (): void {
         ->toContain('php artisan key:generate')
         ->toContain('laravel/doctor')
         ->not->toContain('Confirmation')
-        ->not->toContain('Would you like Doctor to generate an application key')
+        ->not->toContain('Generate an application key using `php artisan key:generate`?')
         ->not->toContain('File:')
         ->not->toContain('ApplicationKeyIsSet.php')
         ->not->toContain('laravel/doctor ApplicationKeyIsSet.php');

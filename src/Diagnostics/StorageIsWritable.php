@@ -28,7 +28,7 @@ class StorageIsWritable extends Diagnostic implements Fixable
             'not-writable' => Message::make(
                 summary: 'The application cannot write to every required storage directory.',
                 remediation: 'Ensure storage directories and bootstrap/cache exist and are writable by the PHP process.',
-                confirmation: 'Would you like Doctor to make the storage directories writable?',
+                confirmation: 'Make the storage directories writable?',
             ),
             'still-not-writable' => 'Some storage directories are still not writable.',
         ];

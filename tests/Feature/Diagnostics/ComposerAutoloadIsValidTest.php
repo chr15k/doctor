@@ -43,7 +43,7 @@ it('checks Composer autoload validity with a strict dry run', function (): void 
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('does not comply with psr-4')
-        ->and($result->confirmation)->toBe('Would you like Doctor to regenerate Composer autoload files using `composer dump-autoload`?')
+        ->and($result->confirmation)->toBe('Regenerate Composer autoload files using `composer dump-autoload`?')
         ->and($result->remediation)->toBe('Regenerate Composer autoload files with `composer dump-autoload`.');
 });
 
