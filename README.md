@@ -163,9 +163,9 @@ The `pass` and `warn` methods build results from the diagnostic's named messages
 Doctor ships with a focused suite of diagnostics that cover common configuration, environment, dependency, database, queue, and storage problems. The default suite includes:
 
 - **Environment** — `.env` presence, `APP_KEY`, PHP version, required and recommended PHP extensions, and timezone.
-- **Composer** — Composer dependencies are installed before autoload validation runs, Composer can dump optimized autoload files, and `composer.lock` is present and fresh.
+- **Composer** — Composer dependencies are installed before autoload validation runs, Composer can dump optimized autoload files, and repairable `composer.lock` problems can be fixed automatically in local environments.
 - **Configuration** — configuration files can be loaded and cached, configuration values required by the active drivers are set, and bootstrap cache files are reported when their presence does not match the current environment.
-- **Database** — the default connection is reachable, the SQLite database file exists when needed, and pending migrations are reported.
+- **Database** — the default connection is reachable, the SQLite database file exists when needed, and pending migrations can be applied automatically in local environments.
 - **Cache, queue, scheduler, and session** — configured drivers are reachable, active Redis connections are checked, `sync` queues are flagged outside local environments, and registered scheduled tasks are surfaced as a notice.
 - **Storage** — the default filesystem disk is reachable, required directories are writable, and the `storage:link` symlink exists when expected.
 - **Security** — debug mode matches the environment, `.env` is ignored, and Composer dependencies are audited.

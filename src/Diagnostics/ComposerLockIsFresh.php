@@ -4,12 +4,16 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Illuminate\Support\Composer;
 use Illuminate\Support\Facades\Process;
+use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
+use LogicException;
 
-class ComposerLockIsFresh extends Diagnostic
+class ComposerLockIsFresh extends Diagnostic implements Fixable
 {
     public string $name = 'composer.lock is fresh';
 
@@ -27,20 +31,25 @@ class ComposerLockIsFresh extends Diagnostic
             'lock-missing' => Message::make(
                 summary: 'The application does not have a composer.lock file.',
                 remediation: 'Run `composer install` to generate a composer.lock file.',
+                confirmation: 'Generate composer.lock and install dependencies using `composer install`?',
             ),
             'fresh' => 'composer.lock is present and fresh.',
             'stale' => Message::make(
                 summary: 'composer.lock is out of date with composer.json.',
                 remediation: 'Run `composer update --lock` to refresh the lock file.',
+                confirmation: 'Refresh composer.lock using `composer update --lock`?',
             ),
             'constraint-mismatch' => Message::make(
                 summary: 'composer.lock does not satisfy the package constraints in composer.json.',
                 remediation: 'Run `composer update {packages}` to lock versions that satisfy composer.json.',
+                confirmation: 'Update {packages} using `composer update {packages}`?',
             ),
             'inspection-failed' => Message::make(
                 summary: 'Composer could not verify composer.lock freshness.',
                 remediation: 'Run `composer validate --check-lock` and resolve the reported Composer errors.',
             ),
+            'fix-failed' => 'composer.lock could not be repaired.',
+            'fixed' => 'composer.lock was repaired.',
         ];
     }
 
@@ -54,7 +63,7 @@ class ComposerLockIsFresh extends Diagnostic
         }
 
         if (! is_file(base_path('composer.lock'))) {
-            return $this->fail('lock-missing');
+            return $this->fail('lock-missing')->fixable(EnvironmentMode::Local);
         }
 
         $process = Process::path(base_path())->run([
@@ -79,16 +88,49 @@ class ComposerLockIsFresh extends Diagnostic
 
         if (($packages = $this->mismatchedPackages($details)) !== []) {
             return $this->fail('constraint-mismatch', ['packages' => implode(' ', $packages)])
+                ->fixable(EnvironmentMode::Local)
+                ->withContext('packages', $packages)
                 ->withDetails($this->lockFileErrors($details) ?? $details);
         }
 
         if ($this->reportsStaleLock($details)) {
             return $this->fail('stale')
+                ->fixable(EnvironmentMode::Local)
                 ->withDetails($this->lockFileErrors($details) ?? $details);
         }
 
         return $this->fail('inspection-failed')
             ->withDetails($details);
+    }
+
+    /**
+     * Fix the diagnostic.
+     */
+    public function fix(DiagnosticResult $result): FixResult
+    {
+        $arguments = match ($result->code) {
+            'composer-lock-is-fresh.lock-missing' => ['install'],
+            'composer-lock-is-fresh.stale' => ['update', '--lock'],
+            'composer-lock-is-fresh.constraint-mismatch' => $this->constraintUpdateArguments($result),
+            default => throw new LogicException("Unexpected composer.lock result [{$result->code}]."),
+        };
+
+        $process = Process::path(base_path())->run([
+            ...$this->composer(),
+            ...$arguments,
+            '--no-interaction',
+        ]);
+
+        if (! $process->successful()) {
+            return $this->fixFailed('fix-failed')
+                ->withDetails(Details::processOutput(
+                    $process->output(),
+                    $process->errorOutput(),
+                    'Composer exited without lock file repair details.',
+                ));
+        }
+
+        return $this->fixed('fixed');
     }
 
     /**
@@ -102,6 +144,19 @@ class ComposerLockIsFresh extends Diagnostic
         $composer = app('composer');
 
         return array_values($composer->findComposer());
+    }
+
+    /**
+     * Get the targeted Composer update arguments for constraint mismatches.
+     *
+     * @return list<string>
+     */
+    private function constraintUpdateArguments(DiagnosticResult $result): array
+    {
+        /** @var list<string> $packages */
+        $packages = $result->context['packages'];
+
+        return ['update', ...$packages];
     }
 
     /**
