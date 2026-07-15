@@ -6,6 +6,7 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\DiagnosticSource;
 use Laravel\Doctor\Doctor;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
@@ -15,6 +16,7 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\DatabaseDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\DefaultMetadataDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\LocalOnlyFixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\NoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
@@ -146,6 +148,83 @@ it('runs a fix supplied by the diagnostic', function (): void {
 
     expect($fix->result->status->value)->toBe('pass')
         ->and($fix->result->summary)->toBe('The diagnostic was fixed.');
+});
+
+it('determines whether a result is fixable in an environment mode', function (): void {
+    expect(DiagnosticResult::fail('Unmarked')->fixableIn(EnvironmentMode::Local))->toBeFalse()
+        ->and(DiagnosticResult::fail('Unscoped')->fixable()->fixableIn(EnvironmentMode::Local))->toBeTrue()
+        ->and(DiagnosticResult::fail('Unscoped')->fixable()->fixableIn(EnvironmentMode::Production))->toBeTrue()
+        ->and(DiagnosticResult::fail('Local')->fixable(EnvironmentMode::Local)->fixableIn(EnvironmentMode::Local))->toBeTrue()
+        ->and(DiagnosticResult::fail('Local')->fixable(EnvironmentMode::Local)->fixableIn(EnvironmentMode::Production))->toBeFalse();
+});
+
+it('resolves local-only fixability against the current environment mode', function (): void {
+    $outcome = new DiagnosticOutcome(
+        new LocalOnlyFixableDiagnostic,
+        (new LocalOnlyFixableDiagnostic)->check(),
+    );
+
+    $this->app->detectEnvironment(fn (): string => 'local');
+
+    expect($outcome->fixable())->toBeTrue();
+
+    $this->app->detectEnvironment(fn (): string => 'production');
+
+    expect($outcome->fixable())->toBeFalse();
+
+    $this->app->detectEnvironment(fn (): string => 'preview');
+
+    expect($outcome->fixable())->toBeFalse();
+});
+
+it('skips local-only fixes outside local mode', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+
+    $offered = false;
+    $report = (new Doctor($this->app))
+        ->diagnostic(LocalOnlyFixableDiagnostic::class)
+        ->fixUsing(function (DiagnosticOutcome $outcome) use (&$offered): bool {
+            $offered = true;
+
+            return true;
+        })
+        ->run();
+
+    expect($report->fixes())->toBe([])
+        ->and($report->hasFailures())->toBeTrue()
+        ->and($offered)->toBeFalse();
+});
+
+it('applies local-only fixes in local mode', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'local');
+
+    $report = (new Doctor($this->app))
+        ->diagnostic(LocalOnlyFixableDiagnostic::class)
+        ->fixUsing(fn (DiagnosticOutcome $outcome): bool => true)
+        ->run();
+
+    expect($report->fixes())->toHaveCount(1)
+        ->and($report->fixes()[0]->result->summary)->toBe('The local diagnostic was fixed.');
+});
+
+it('rejects direct fixes for outcomes blocked in the current environment', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+
+    (new Doctor($this->app))->fix(new DiagnosticOutcome(
+        new LocalOnlyFixableDiagnostic,
+        (new LocalOnlyFixableDiagnostic)->check(),
+    ));
+})->throws(LogicException::class, 'is not fixable');
+
+it('keeps unscoped outcomes fixable in production mode', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+
+    $outcome = (new Doctor($this->app))
+        ->diagnostic(FixableDiagnostic::class)
+        ->run()
+        ->diagnostics()[0];
+
+    expect($outcome->fixable())->toBeTrue();
 });
 
 it('turns fix exceptions into helpful error results', function (): void {

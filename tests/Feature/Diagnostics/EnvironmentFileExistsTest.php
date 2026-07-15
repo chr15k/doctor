@@ -2,6 +2,7 @@
 
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Doctor;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\Link;
 
@@ -13,6 +14,10 @@ function doctor_environment_base_path(): string
 
     return $basePath;
 }
+
+beforeEach(function (): void {
+    $this->app->detectEnvironment(fn (): string => 'local');
+});
 
 it('passes when .env exists', function (): void {
     $basePath = doctor_environment_base_path();
@@ -56,7 +61,25 @@ it('reports a missing environment file with guidance when an example exists', fu
         ->and($outcome->result->summary)->toBe('The application does not have an environment file.')
         ->and($outcome->result->confirmation)->toBe('Copy .env.example to .env?')
         ->and($outcome->result->remediation)->toBe('Run `cp .env.example .env`, then review the copied values.')
+        ->and($outcome->result->fixableEnvironments)->toBe([EnvironmentMode::Local])
+        ->and($outcome->fixable())->toBeTrue()
         ->and($outcome->result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);
+});
+
+it('does not offer to create a missing environment file in production', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+    $basePath = doctor_environment_base_path();
+    file_put_contents($basePath.'/.env.example', "APP_NAME=Laravel\n");
+
+    $this->app->setBasePath($basePath);
+
+    $outcome = $this->app->make(Doctor::class)
+        ->only('EnvironmentFileExists')->run()
+        ->diagnostics()[0];
+
+    expect($outcome->result->status->value)->toBe('fail')
+        ->and($outcome->fixable())->toBeFalse()
+        ->and($outcome->result->remediation)->toBe('Run `cp .env.example .env`, then review the copied values.');
 });
 
 it('copies .env.example to .env when fixed', function (): void {
@@ -107,6 +130,7 @@ it('creates an empty .env when .env.example is missing', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->fixable)->toBeTrue()
+        ->and($result->fixableEnvironments)->toBe([EnvironmentMode::Local])
         ->and($result->confirmation)->toBe('Create an empty .env file?')
         ->and($result->remediation)->toBe("Create a .env file with the application's environment variables.")
         ->and($result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);

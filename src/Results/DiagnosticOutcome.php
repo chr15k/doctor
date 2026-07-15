@@ -7,6 +7,7 @@ use JsonSerializable;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSource;
+use Laravel\Doctor\EnvironmentMode;
 
 /**
  * @implements Arrayable<string, mixed>
@@ -38,7 +39,7 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
     {
         return $this->diagnostic instanceof Fixable
             && $this->result->status === Status::Fail
-            && $this->result->fixable;
+            && $this->result->fixableIn(EnvironmentMode::current());
     }
 
     /**

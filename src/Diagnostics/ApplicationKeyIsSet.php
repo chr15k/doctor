@@ -6,6 +6,7 @@ use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Env;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Link;
@@ -45,7 +46,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
             return $this->pass('configured');
         }
 
-        return $this->fail('missing')->fixable();
+        return $this->fail('missing')->fixable(EnvironmentMode::Local);
     }
 
     /**

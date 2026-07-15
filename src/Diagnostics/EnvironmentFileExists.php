@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Link;
@@ -53,10 +54,10 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
         }
 
         if (is_file(base_path('.env.example'))) {
-            return $this->fail('missing-with-example')->fixable();
+            return $this->fail('missing-with-example')->fixable(EnvironmentMode::Local);
         }
 
-        return $this->fail('missing')->fixable();
+        return $this->fail('missing')->fixable(EnvironmentMode::Local);
     }
 
     /**

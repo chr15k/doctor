@@ -2,6 +2,7 @@
 
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Doctor;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\Link;
@@ -15,6 +16,10 @@ function doctor_application_key_environment_path(string $contents): string
 
     return $environmentPath;
 }
+
+beforeEach(function (): void {
+    $this->app->detectEnvironment(fn (): string => 'local');
+});
 
 it('passes when the application key is set', function (): void {
     config(['app.key' => 'base64:'.str_repeat('a', 44)]);
@@ -41,7 +46,22 @@ it('reports a missing application key', function (): void {
         ->and($outcome->result->summary)->toBe('The application key is not configured.')
         ->and($outcome->result->confirmation)->toBe('Generate an application key?')
         ->and($outcome->result->remediation)->toBe('Generate an application key with `php artisan key:generate`.')
+        ->and($outcome->result->fixableEnvironments)->toBe([EnvironmentMode::Local])
+        ->and($outcome->fixable())->toBeTrue()
         ->and($outcome->result->links)->toEqual([Link::docs('encryption')]);
+});
+
+it('does not offer to generate a missing application key in production', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+    config(['app.key' => '']);
+
+    $outcome = $this->app->make(Doctor::class)
+        ->only('ApplicationKeyIsSet')->run()
+        ->diagnostics()[0];
+
+    expect($outcome->result->status->value)->toBe('fail')
+        ->and($outcome->fixable())->toBeFalse()
+        ->and($outcome->result->remediation)->toBe('Generate an application key with `php artisan key:generate`.');
 });
 
 it('generates an application key when fixed', function (): void {

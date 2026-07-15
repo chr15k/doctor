@@ -2,6 +2,8 @@
 
 namespace Laravel\Doctor\Results;
 
+use Laravel\Doctor\EnvironmentMode;
+
 /**
  * @phpstan-consistent-constructor
  */
@@ -11,6 +13,15 @@ class DiagnosticResult
      * Whether this result represents an outcome the diagnostic can fix.
      */
     public bool $fixable = false;
+
+    /**
+     * The environment modes in which the diagnostic's fix may be applied.
+     *
+     * An empty list places no environment constraint on the fix.
+     *
+     * @var list<EnvironmentMode>
+     */
+    public array $fixableEnvironments = [];
 
     public ?string $details = null;
 
@@ -131,11 +142,22 @@ class DiagnosticResult
     /**
      * Mark this result as eligible for the diagnostic's fix.
      */
-    public function fixable(): static
+    public function fixable(EnvironmentMode ...$environments): static
     {
         $this->fixable = true;
+        $this->fixableEnvironments = array_values($environments);
 
         return $this;
+    }
+
+    /**
+     * Determine whether the fix may be applied in the given environment mode.
+     */
+    public function fixableIn(EnvironmentMode $environment): bool
+    {
+        return $this->fixable
+            && ($this->fixableEnvironments === []
+                || in_array($environment, $this->fixableEnvironments, true));
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Link;
@@ -47,14 +48,14 @@ class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
     public function check(): DiagnosticResult
     {
         if (! File::exists($this->gitignorePath())) {
-            return $this->fail('gitignore-missing')->fixable();
+            return $this->fail('gitignore-missing')->fixable(EnvironmentMode::Local);
         }
 
         if ($this->ignores('.env')) {
             return $this->pass('ignored');
         }
 
-        return $this->fail('not-ignored')->fixable();
+        return $this->fail('not-ignored')->fixable(EnvironmentMode::Local);
     }
 
     /**

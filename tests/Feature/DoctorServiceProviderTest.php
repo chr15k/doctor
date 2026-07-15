@@ -41,6 +41,7 @@ use Laravel\Doctor\Results\Status;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\LocalOnlyFixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
@@ -73,6 +74,7 @@ it('loads the default doctor configuration', function (): void {
 });
 
 it('does not repeat diagnostics that were fixed', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'local');
     config(['app.key' => '']);
 
     $environmentPath = sys_get_temp_dir().'/laravel-doctor-key-'.str_replace('.', '', uniqid('', true));
@@ -128,6 +130,7 @@ it('reruns diagnostics after applying fixes', function (): void {
 });
 
 it('merges a failed fix into the diagnostic issue callout', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'local');
     config(['app.key' => '']);
 
     $environmentPath = sys_get_temp_dir().'/laravel-doctor-key-fail-'.str_replace('.', '', uniqid('', true));
@@ -645,6 +648,30 @@ it('marks fixable issues in agent output', function (): void {
             'fix' => 'Apply the testing diagnostic fix.',
             'fixable' => true,
         ]])
+        ->and($payload)->not->toHaveKey('fixes')
+        ->and($exitCode)->toBe(1);
+});
+
+it('does not expose or apply local-only fixes in production agent output', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'production');
+    Doctor::diagnostic(LocalOnlyFixableDiagnostic::class);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'LocalOnlyFixableDiagnostic',
+        '--format' => 'agent',
+        '--fix' => true,
+    ], $output);
+
+    $payload = json_decode(trim($output->fetch()), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['issues'])->toBe([[
+        'name' => 'Testing diagnostic is fixable locally',
+        'status' => 'fail',
+        'summary' => 'The local diagnostic failed.',
+        'fix' => 'Apply the local testing diagnostic fix.',
+    ]])
         ->and($payload)->not->toHaveKey('fixes')
         ->and($exitCode)->toBe(1);
 });
