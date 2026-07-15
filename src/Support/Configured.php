@@ -19,4 +19,20 @@ final class Configured
 
         return is_string($value) && $value !== '' ? $value : $default;
     }
+
+    /**
+     * Get the given configuration keys that do not hold a usable value.
+     *
+     * Null values, blank strings, and empty arrays are treated as missing.
+     *
+     * @param  list<string>  $keys
+     * @return list<string>
+     */
+    public static function missing(array $keys): array
+    {
+        return array_values(array_filter(
+            $keys,
+            static fn (string $key): bool => blank(config($key)),
+        ));
+    }
 }

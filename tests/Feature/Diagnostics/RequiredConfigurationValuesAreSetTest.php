@@ -164,11 +164,14 @@ it('requires a host and port for syslog udp log channels', function (): void {
         ->and($result->details)->toContain('logging.channels.papertrail.handler_with.port');
 });
 
-it('requires the postmark token for the active mailer', function (): void {
+it('requires postmark credentials for the active mailer', function (): void {
     config([
         'mail.default' => 'postmark',
         'mail.mailers.postmark.transport' => 'postmark',
+        'mail.mailers.postmark.token' => null,
+        'mail.mailers.postmark.key' => null,
         'services.postmark.token' => null,
+        'services.postmark.key' => null,
         'services.resend.key' => null,
     ]);
 
@@ -177,6 +180,41 @@ it('requires the postmark token for the active mailer', function (): void {
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('services.postmark.token')
         ->and($result->details)->not->toContain('services.resend.key');
+});
+
+it('accepts every postmark credential location supported by Laravel', function (string $credential): void {
+    config([
+        'mail.default' => 'transactional',
+        'mail.mailers.transactional.transport' => 'postmark',
+        'mail.mailers.transactional.token' => null,
+        'mail.mailers.transactional.key' => null,
+        'services.postmark.token' => null,
+        'services.postmark.key' => null,
+        $credential => 'postmark-credential',
+    ]);
+
+    $result = (new RequiredConfigurationValuesAreSet)->check();
+
+    expect($result->status->value)->toBe('pass');
+})->with([
+    'mailer token' => 'mail.mailers.transactional.token',
+    'mailer key' => 'mail.mailers.transactional.key',
+    'service token' => 'services.postmark.token',
+    'service key' => 'services.postmark.key',
+]);
+
+it('respects Laravel postmark credential precedence', function (): void {
+    config([
+        'mail.default' => 'postmark',
+        'mail.mailers.postmark.transport' => 'postmark',
+        'mail.mailers.postmark.token' => '',
+        'services.postmark.token' => 'fallback-token',
+    ]);
+
+    $result = (new RequiredConfigurationValuesAreSet)->check();
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->details)->toContain('mail.mailers.postmark.token');
 });
 
 it('resolves mailers behind failover transports', function (): void {

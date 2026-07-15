@@ -275,6 +275,68 @@ Reserve tokens for short identifying values such as versions, paths, and counts.
 
 If the check gathers state the fix will need, store it with `withContext()` on the result. Mark only outcomes the fix can handle with `fixable()`, and only implement `Fixable` when the repair is predictable and safe. Scope a fix to `EnvironmentMode::Local` to limit fixes to a development environment.
 
+### Diagnostic Helpers
+
+Many applications and packages end up writing the same kinds of checks, so Doctor provides helpers in the `Laravel\Doctor\Support` namespace for the recurring mechanics. Reach for these before re-implementing the logic inside a diagnostic.
+
+#### Configuration Values
+
+The `Configured` helper reads configuration defensively. Diagnostics must be able to inspect misconfigured applications without failing before they can report, so these methods never throw on unexpected types the way the config repository's typed accessors can.
+
+`Configured::string()` returns a configured string, treating blank or non-string values as missing:
+
+```php
+use Laravel\Doctor\Support\Configured;
+
+$connection = Configured::string('queue.default', 'database');
+```
+
+`Configured::missing()` returns the given keys that do not hold a usable value. Null values, blank strings, and empty arrays are treated as missing, so a "package requires these configuration values" diagnostic reduces to:
+
+```php
+public function check(): DiagnosticResult
+{
+    $missing = Configured::missing([
+        'services.stripe.key',
+        'services.stripe.secret',
+    ]);
+
+    if ($missing === []) {
+        return $this->pass('set');
+    }
+
+    return $this->fail('missing')->withDetails(Details::bullets($missing));
+}
+```
+
+#### Active Drivers
+
+Default configuration values often point at wrapper drivers rather than the driver doing the work: the default log channel is usually a `stack`, and a default mailer may be a `failover` or `roundrobin` transport. The `ActiveDrivers` helper unwraps these to the concrete channels and mailers actually in use, so a diagnostic only inspects drivers that matter:
+
+```php
+use Laravel\Doctor\Support\ActiveDrivers;
+
+$channels = ActiveDrivers::logChannels(Configured::string('logging.default', 'stack'));
+
+$mailers = ActiveDrivers::mailers(Configured::string('mail.default', 'log'));
+```
+
+Both methods resolve nested wrappers and tolerate circular references.
+
+#### Result Details
+
+The `Details` helper formats the evidence attached to results with `withDetails()`. `Details::bullets()` renders a list of strings as bullets, `Details::failures()` renders keyed failure messages, and `Details::processOutput()` selects the most useful stream from a finished process, preferring error output and falling back when both streams are empty:
+
+```php
+use Laravel\Doctor\Support\Details;
+
+Details::bullets(['services.stripe.key', 'services.stripe.secret']);
+
+Details::failures(['media' => 'The disk root is not writable.']);
+
+Details::processOutput($process->output(), $process->errorOutput(), 'The command produced no output.');
+```
+
 ## Registering Diagnostics
 
 Applications may register diagnostics through the Doctor facade, typically from a service provider:

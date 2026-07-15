@@ -61,7 +61,7 @@ it('notices when bootstrap files are cached locally', function (): void {
         ->and($result->summary)->toBe('Cached bootstrap files detected: config, events, routes and views.')
         ->and($result->details)->toBeNull()
         ->and($result->remediation)->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.')
-        ->and($result->links)->toEqual([Link::docs('configuration', 'configuration-caching')]);
+        ->and($result->links)->toEqual([Link::docs('deployment', 'optimization')]);
 });
 
 it('notices when one bootstrap file is cached locally', function (): void {

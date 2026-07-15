@@ -55,10 +55,11 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
      */
     private function missingValues(): array
     {
-        return array_filter(
-            $this->requiredValues(),
-            fn (string $key): bool => ! $this->hasValue($key),
-            ARRAY_FILTER_USE_KEY,
+        $required = $this->requiredValues();
+
+        return array_intersect_key(
+            $required,
+            array_flip(Configured::missing(array_keys($required))),
         );
     }
 
@@ -175,10 +176,36 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
         return match (Configured::string("mail.mailers.{$mailer}.transport", $mailer)) {
             'smtp' => $this->values("mail.mailers.{$mailer}", ['host'], 'smtp mailer'),
             'sendmail' => $this->values("mail.mailers.{$mailer}", ['path'], 'sendmail mailer'),
-            'postmark' => $this->values('services.postmark', ['token'], 'postmark mailer'),
+            'postmark' => $this->postmarkValues($mailer),
             'resend' => $this->values('services.resend', ['key'], 'resend mailer'),
             default => [],
         };
+    }
+
+    /**
+     * Get configuration keys required by a Postmark mailer.
+     *
+     * @return array<string, string>
+     */
+    private function postmarkValues(string $mailer): array
+    {
+        $required = $this->values('services.postmark', ['token'], 'postmark mailer');
+        $credentials = [
+            "mail.mailers.{$mailer}.token",
+            "mail.mailers.{$mailer}.key",
+            'services.postmark.token',
+            'services.postmark.key',
+        ];
+
+        foreach ($credentials as $credential) {
+            if (config($credential) !== null) {
+                return Configured::missing([$credential]) === []
+                    ? []
+                    : [$credential => 'postmark mailer'];
+            }
+        }
+
+        return $required;
     }
 
     /**
@@ -216,21 +243,6 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
         }
 
         return $values;
-    }
-
-    /**
-     * Determine whether a configuration key holds a usable value.
-     */
-    private function hasValue(string $key): bool
-    {
-        $value = config($key);
-
-        return match (true) {
-            $value === null => false,
-            is_string($value) => trim($value) !== '',
-            is_array($value) => $value !== [],
-            default => true,
-        };
     }
 
     /**

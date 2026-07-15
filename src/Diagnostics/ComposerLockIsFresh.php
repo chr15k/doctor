@@ -2,7 +2,6 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Support\Composer;
 use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
@@ -10,6 +9,7 @@ use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Composer;
 use Laravel\Doctor\Support\Details;
 use LogicException;
 
@@ -67,7 +67,7 @@ class ComposerLockIsFresh extends Diagnostic implements Fixable
         }
 
         $process = Process::path(base_path())->run([
-            ...$this->composer(),
+            ...Composer::command(),
             'validate',
             '--check-lock',
             '--no-check-publish',
@@ -116,7 +116,7 @@ class ComposerLockIsFresh extends Diagnostic implements Fixable
         };
 
         $process = Process::path(base_path())->run([
-            ...$this->composer(),
+            ...Composer::command(),
             ...$arguments,
             '--no-interaction',
         ]);
@@ -131,19 +131,6 @@ class ComposerLockIsFresh extends Diagnostic implements Fixable
         }
 
         return $this->fixed('fixed');
-    }
-
-    /**
-     * Get the Composer command for the application.
-     *
-     * @return list<string>
-     */
-    private function composer(): array
-    {
-        /** @var Composer $composer */
-        $composer = app('composer');
-
-        return array_values($composer->findComposer());
     }
 
     /**
