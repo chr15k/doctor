@@ -26,16 +26,15 @@ return [
     | Environment Modes
     |--------------------------------------------------------------------------
     |
-    | Doctor maps Laravel environment names to one of its supported modes so
-    | diagnostics know which expectations apply. Any environment that is
-    | not listed here is treated as production, the strictest mode.
+    | Group Laravel environment names by the Doctor mode whose expectations
+    | should apply. Any environment not listed here is treated as
+    | production, the strictest mode.
     |
     */
 
     'environments' => [
-        'local' => 'local',
-        'production' => 'production',
-        // 'staging' => 'production', // Laravel environment => Doctor mode
+        'local' => ['local'],
+        'production' => ['production', 'staging'],
     ],
 
 ];

@@ -124,17 +124,16 @@ To judge these diagnostics, Doctor resolves the application to one of two modes:
 
 The mode changes the verdict, not just the message. Missing bootstrap caches warn in production but pass locally, while present bootstrap caches pass in production but produce a notice locally, since a stale cache is a common reason recent changes do not appear during development.
 
-Doctor recognizes Laravel's conventional `local` and `production` environment names out of the box. If your application uses other names, such as `staging` or `qa`, map each one to a Doctor mode in the configuration file:
+Doctor recognizes Laravel's conventional `local`, `production`, and `staging` environment names out of the box. If your application uses other names, group each one under the appropriate Doctor mode in the configuration file:
 
 ```php
 'environments' => [
-    'local' => 'local',
-    'production' => 'production',
-    'staging' => 'production',
+    'local' => ['local', 'dev'],
+    'production' => ['production', 'staging', 'qa'],
 ],
 ```
 
-Any environment not listed is treated as `production`, so unfamiliar environments are held to the strictest expectations rather than quietly excused. Mapping an environment to an unsupported mode throws an exception, since a misconfigured Doctor cannot be trusted to diagnose anything else.
+Any environment not listed is treated as `production`, so unfamiliar environments are held to the strictest expectations rather than quietly excused. An unsupported mode name, an environment list that is not an array, or an environment assigned to both modes throws an exception.
 
 Custom diagnostics may branch on the current mode. Here, a `sync` queue connection passes on a developer's machine but warns in production:
 

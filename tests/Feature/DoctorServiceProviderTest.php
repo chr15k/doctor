@@ -67,8 +67,8 @@ it('loads the default doctor configuration', function (): void {
     expect(config('doctor.only'))->toBe([])
         ->and(config('doctor.except'))->toBe([])
         ->and(config('doctor.environments'))->toBe([
-            'local' => 'local',
-            'production' => 'production',
+            'local' => ['local'],
+            'production' => ['production', 'staging'],
         ]);
 });
 

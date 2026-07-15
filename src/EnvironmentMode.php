@@ -22,23 +22,49 @@ enum EnvironmentMode: string
      */
     public static function fromLaravelEnvironment(string $environment): self
     {
-        $mode = config()->array('doctor.environments', [])[$environment] ?? null;
+        return self::configuredEnvironments()[$environment] ?? self::Production;
+    }
 
-        if ($mode === null) {
-            return self::Production;
+    /**
+     * Get the Doctor mode for each configured Laravel environment name.
+     *
+     * @return array<string, self>
+     */
+    protected static function configuredEnvironments(): array
+    {
+        $configured = [];
+
+        foreach (config()->array('doctor.environments', []) as $mode => $environments) {
+            $resolved = is_string($mode) ? self::tryFrom($mode) : null;
+
+            if ($resolved === null) {
+                throw new InvalidArgumentException(sprintf(
+                    'Invalid Doctor environment mode [%s] configured.',
+                    is_string($mode) ? $mode : get_debug_type($mode),
+                ));
+            }
+
+            if (! is_array($environments)) {
+                throw new InvalidArgumentException(sprintf(
+                    'Laravel environment names for Doctor mode [%s] must be an array, [%s] given.',
+                    $mode,
+                    get_debug_type($environments),
+                ));
+            }
+
+            foreach ($environments as $environment) {
+                if (isset($configured[$environment]) && $configured[$environment] !== $resolved) {
+                    throw new InvalidArgumentException(sprintf(
+                        'Laravel environment [%s] is configured for multiple Doctor modes.',
+                        $environment,
+                    ));
+                }
+
+                $configured[$environment] = $resolved;
+            }
         }
 
-        $resolved = is_string($mode) ? self::tryFrom($mode) : null;
-
-        if ($resolved === null) {
-            throw new InvalidArgumentException(sprintf(
-                'Invalid Doctor environment mode [%s] configured for the [%s] environment.',
-                is_string($mode) ? $mode : get_debug_type($mode),
-                $environment,
-            ));
-        }
-
-        return $resolved;
+        return $configured;
     }
 
     /**

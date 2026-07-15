@@ -13,7 +13,7 @@ it('reports debug mode in production', function (): void {
 });
 
 it('treats unmapped environments as production', function (): void {
-    $this->app->detectEnvironment(fn (): string => 'staging');
+    $this->app->detectEnvironment(fn (): string => 'preview');
     config(['app.debug' => true]);
 
     $result = (new DebugModeMatchesEnvironment)->check();
@@ -26,7 +26,7 @@ it('honors custom local environment mappings', function (): void {
     $this->app->detectEnvironment(fn (): string => 'dev');
     config([
         'app.debug' => true,
-        'doctor.environments.dev' => 'local',
+        'doctor.environments.local' => ['local', 'dev'],
     ]);
 
     $result = (new DebugModeMatchesEnvironment)->check();
