@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Composer\Semver\Semver;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\ComposerJson;
 
@@ -35,7 +36,7 @@ class PhpVersionSatisfiesComposerRequirement extends Diagnostic
             'unsatisfied' => Message::make(
                 summary: 'PHP {version} does not satisfy [{constraint}].',
                 remediation: 'Switch to a PHP version that satisfies [{constraint}], or update the constraint in composer.json.',
-            ),
+            )->link(Link::docs('deployment', 'server-requirements')),
         ];
     }
 

@@ -4,6 +4,7 @@ use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 
 function doctor_application_key_environment_path(string $contents): string
 {
@@ -39,7 +40,8 @@ it('reports a missing application key', function (): void {
         ->and($outcome->result->code)->toBe('application-key-is-set.missing')
         ->and($outcome->result->summary)->toBe('The application key is not configured.')
         ->and($outcome->result->confirmation)->toBe('Generate an application key?')
-        ->and($outcome->result->remediation)->toBe('Generate an application key with `php artisan key:generate`.');
+        ->and($outcome->result->remediation)->toBe('Generate an application key with `php artisan key:generate`.')
+        ->and($outcome->result->links)->toEqual([Link::docs('encryption')]);
 });
 
 it('generates an application key when fixed', function (): void {

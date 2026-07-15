@@ -6,6 +6,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use LogicException;
 use RuntimeException;
@@ -29,7 +30,7 @@ class ConfigurationCanBeCached extends Diagnostic
             'cannot-cache' => Message::make(
                 summary: 'The application configuration cannot be cached.',
                 remediation: 'Remove closures and other non-serializable values from the configuration files before running `php artisan config:cache`.',
-            ),
+            )->link(Link::docs('configuration', 'configuration-caching')),
             'can-cache' => 'The application configuration can be cached.',
         ];
     }

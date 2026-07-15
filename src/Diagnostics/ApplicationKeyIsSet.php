@@ -8,6 +8,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
@@ -29,7 +30,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
                 summary: 'The application key is not configured.',
                 remediation: 'Generate an application key with `php artisan key:generate`.',
                 confirmation: 'Generate an application key?',
-            ),
+            )->link(Link::docs('encryption')),
             'generated' => 'The application key was generated.',
             'generation-failed' => 'The application key could not be generated.',
         ];

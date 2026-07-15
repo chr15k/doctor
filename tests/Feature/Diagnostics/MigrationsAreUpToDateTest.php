@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\MigrationsAreUpToDate;
+use Laravel\Doctor\Results\Link;
 
 it('reports pending migrations', function (): void {
     $this->app->instance('migrator', new class
@@ -36,5 +37,6 @@ it('reports pending migrations', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('2024_01_01_000000_create_users_table')
-        ->and($result->remediation)->toBe('Run `php artisan migrate` to apply the pending migrations.');
+        ->and($result->remediation)->toBe('Run `php artisan migrate` to apply the pending migrations.')
+        ->and($result->links)->toEqual([Link::docs('migrations', 'running-migrations')]);
 });

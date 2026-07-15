@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class ApplicationTimezoneIsValid extends Diagnostic
@@ -23,12 +24,12 @@ class ApplicationTimezoneIsValid extends Diagnostic
             'missing' => Message::make(
                 summary: 'The application does not have a timezone configured.',
                 remediation: 'Set APP_TIMEZONE or app.timezone to a valid PHP timezone.',
-            ),
+            )->link(Link::to('PHP timezone list', 'https://www.php.net/manual/en/timezones.php')),
             'valid' => 'The application has a valid timezone.',
             'invalid' => Message::make(
                 summary: 'The application timezone [{timezone}] is not a valid PHP timezone.',
                 remediation: 'Set APP_TIMEZONE or app.timezone to a valid PHP timezone.',
-            ),
+            )->link(Link::to('PHP timezone list', 'https://www.php.net/manual/en/timezones.php')),
         ];
     }
 

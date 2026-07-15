@@ -2,6 +2,7 @@
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Doctor\Diagnostics\ScheduledTasksRequireScheduler;
+use Laravel\Doctor\Results\Link;
 
 it('passes when no scheduled tasks are registered', function (): void {
     $this->app->instance(Schedule::class, new Schedule);
@@ -22,5 +23,6 @@ it('notices when scheduled tasks are registered', function (): void {
 
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('The application has scheduled tasks.')
-        ->and($result->remediation)->toContain('php artisan schedule:run');
+        ->and($result->remediation)->toContain('php artisan schedule:run')
+        ->and($result->links)->toEqual([Link::docs('scheduling', 'running-the-scheduler')]);
 });

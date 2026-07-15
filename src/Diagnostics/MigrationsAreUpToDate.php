@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Database\Migrations\Migrator;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 use Throwable;
@@ -27,13 +28,13 @@ class MigrationsAreUpToDate extends Diagnostic
             'repository-missing' => Message::make(
                 summary: 'The migrations table does not exist.',
                 remediation: 'Run `php artisan migrate` to create the migrations table and apply the migrations.',
-            ),
+            )->link(Link::docs('migrations', 'running-migrations')),
             'inspection-failed' => 'The application could not inspect database migrations.',
             'current' => 'Database migrations are current.',
             'pending' => Message::make(
                 summary: 'Database migrations are pending.',
                 remediation: 'Run `php artisan migrate` to apply the pending migrations.',
-            ),
+            )->link(Link::docs('migrations', 'running-migrations')),
         ];
     }
 

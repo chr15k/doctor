@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 use Throwable;
@@ -27,7 +28,7 @@ class CacheStoreIsReachable extends Diagnostic
             'unreachable' => Message::make(
                 summary: 'The application cannot reach the default cache store.',
                 remediation: 'Check CACHE_STORE and the backing cache service configuration.',
-            ),
+            )->link(Link::docs('cache', 'configuration')),
             'reachable' => 'The application can reach the default cache store.',
         ];
     }

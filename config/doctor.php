@@ -14,11 +14,13 @@ return [
     */
 
     'only' => [
-        //
+        // 'laravel/doctor',
+        // 'vendor/*',
+        // 'security',
     ],
 
     'except' => [
-        //
+        // \Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored::class,
     ],
 
     /*

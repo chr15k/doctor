@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\FilesystemDisksAreReachable;
+use Laravel\Doctor\Results\Link;
 
 function doctor_filesystem_disk_root(): string
 {
@@ -51,4 +52,19 @@ it('skips when the default filesystem disk is not configured', function (): void
     expect($result->status->value)->toBe('skip')
         ->and($result->summary)->toBe('The default filesystem disk [missing] is not configured.')
         ->and($result->details)->toBeNull();
+});
+
+it('links to filesystem configuration when the default disk cannot be reached', function (): void {
+    config([
+        'filesystems.default' => 'doctor',
+        'filesystems.disks.doctor' => [
+            'driver' => 'local',
+            'root' => sys_get_temp_dir().'/laravel-doctor-missing-disk-'.uniqid(),
+        ],
+    ]);
+
+    $result = (new FilesystemDisksAreReachable)->check();
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->links)->toEqual([Link::docs('filesystem', 'configuration')]);
 });

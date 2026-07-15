@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class ScheduledTasksRequireScheduler extends Diagnostic
@@ -25,7 +26,7 @@ class ScheduledTasksRequireScheduler extends Diagnostic
             'tasks-registered' => Message::make(
                 summary: 'The application has scheduled tasks.',
                 remediation: 'Run `php artisan schedule:run` from cron every minute in production, or `php artisan schedule:work` locally.',
-            ),
+            )->link(Link::docs('scheduling', 'running-the-scheduler')),
         ];
     }
 

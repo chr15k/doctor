@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 use RuntimeException;
@@ -31,7 +32,7 @@ class QueueConnectionIsReachable extends Diagnostic
             'unreachable' => Message::make(
                 summary: 'The application cannot reach the default queue connection.',
                 remediation: 'Check QUEUE_CONNECTION and the backing queue service configuration.',
-            ),
+            )->link(Link::docs('queues')),
             'reachable' => 'The application can reach the default queue connection.',
         ];
     }

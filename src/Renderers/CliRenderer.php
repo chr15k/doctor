@@ -8,9 +8,11 @@ use Illuminate\Support\Str;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticReport;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Status;
 use Laravel\Prompts\Elements\Element;
 use Laravel\Prompts\Elements\ElementContract;
+use Laravel\Prompts\Elements\Link as PromptLink;
 
 use function Laravel\Prompts\callout;
 use function Laravel\Prompts\error;
@@ -179,8 +181,8 @@ class CliRenderer
             $this->output->writeln('    '.$outcome->result->remediation);
         }
 
-        foreach ($outcome->result->links as $label => $url) {
-            $this->output->writeln(sprintf('    %s: %s', $label, $url));
+        foreach ($outcome->result->links as $link) {
+            $this->output->writeln('    '.$link->url);
         }
     }
 
@@ -224,18 +226,14 @@ class CliRenderer
      */
     protected function noticesCalloutContent(array $notices): array
     {
-        $content = count($notices) === 1
-            ? [$this->noticeItem($notices[0])]
-            : [Element::bulletedList(array_map(
-                fn (DiagnosticOutcome $notice): string => $this->noticeItem($notice),
-                $notices,
-            ), spaced: true)];
+        $content = [];
 
-        $links = $this->noticeLinks($notices);
+        foreach ($notices as $notice) {
+            $content[] = $this->noticeItem($notice);
 
-        if ($links !== []) {
-            $content[] = Element::heading('Links');
-            $content[] = Element::keyValueList($links);
+            foreach ($notice->result->links as $link) {
+                $content[] = $this->promptLink($link);
+            }
         }
 
         return $content;
@@ -257,17 +255,6 @@ class CliRenderer
         }
 
         return Str::squish(implode(' ', $parts));
-    }
-
-    /**
-     * @param  list<DiagnosticOutcome>  $notices
-     * @return array<string, string>
-     */
-    protected function noticeLinks(array $notices): array
-    {
-        return collect($notices)
-            ->flatMap(static fn (DiagnosticOutcome $notice): array => $notice->result->links)
-            ->all();
     }
 
     /**
@@ -387,9 +374,8 @@ class CliRenderer
             $content[] = $outcome->result->remediation;
         }
 
-        if ($outcome->result->links !== []) {
-            $content[] = Element::heading('Links');
-            $content[] = Element::keyValueList($outcome->result->links);
+        foreach ($outcome->result->links as $link) {
+            $content[] = $this->promptLink($link);
         }
 
         return $content;
@@ -403,5 +389,16 @@ class CliRenderer
     protected function fixConfirmationCalloutContent(DiagnosticOutcome $outcome): array
     {
         return $this->diagnosticCalloutContent($outcome, includeRemediation: false);
+    }
+
+    /**
+     * Format a related link as a native Prompts element with a shortened URL.
+     */
+    protected function promptLink(Link $link): PromptLink
+    {
+        return Element::link(
+            url: $link->url,
+            label: Str::before(Str::after($link->url, '://'), '#'),
+        );
     }
 }

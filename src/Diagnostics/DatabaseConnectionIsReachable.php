@@ -6,6 +6,7 @@ use Illuminate\Database\Connectors\ConnectionFactory;
 use Illuminate\Support\ConfigurationUrlParser;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 use PDO;
@@ -32,7 +33,7 @@ class DatabaseConnectionIsReachable extends Diagnostic
             'unreachable' => Message::make(
                 summary: 'The application cannot connect to the default database connection.',
                 remediation: 'Check DB_CONNECTION and the database credentials in your environment file.',
-            ),
+            )->link(Link::docs('database', 'configuration')),
             'reachable' => 'The application can connect to the default database connection.',
         ];
     }

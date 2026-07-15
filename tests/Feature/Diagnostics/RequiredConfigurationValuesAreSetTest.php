@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\RequiredConfigurationValuesAreSet;
+use Laravel\Doctor\Results\Link;
 use Monolog\Handler\SyslogUdpHandler;
 
 it('passes with the default configuration', function (): void {
@@ -23,7 +24,8 @@ it('reports missing credentials for the active pusher broadcast connection', fun
     expect($result->status->value)->toBe('fail')
         ->and($result->details)->toContain('broadcasting.connections.pusher.app_id')
         ->and($result->details)->toContain('broadcasting.connections.pusher.key')
-        ->and($result->details)->toContain('broadcasting.connections.pusher.secret');
+        ->and($result->details)->toContain('broadcasting.connections.pusher.secret')
+        ->and($result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);
 });
 
 it('passes when the active broadcast connection is fully configured', function (): void {

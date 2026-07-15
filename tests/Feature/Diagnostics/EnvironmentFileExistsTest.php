@@ -3,6 +3,7 @@
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
+use Laravel\Doctor\Results\Link;
 
 function doctor_environment_base_path(): string
 {
@@ -54,7 +55,8 @@ it('reports a missing environment file with guidance when an example exists', fu
     expect($outcome->result->status->value)->toBe('fail')
         ->and($outcome->result->summary)->toBe('The application does not have an environment file.')
         ->and($outcome->result->confirmation)->toBe('Copy .env.example to .env?')
-        ->and($outcome->result->remediation)->toBe('Run `cp .env.example .env`, then review the copied values.');
+        ->and($outcome->result->remediation)->toBe('Run `cp .env.example .env`, then review the copied values.')
+        ->and($outcome->result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);
 });
 
 it('copies .env.example to .env when fixed', function (): void {
@@ -106,7 +108,8 @@ it('creates an empty .env when .env.example is missing', function (): void {
     expect($result->status->value)->toBe('fail')
         ->and($result->fixable)->toBeTrue()
         ->and($result->confirmation)->toBe('Create an empty .env file?')
-        ->and($result->remediation)->toBe("Create a .env file with the application's environment variables.");
+        ->and($result->remediation)->toBe("Create a .env file with the application's environment variables.")
+        ->and($result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
         $diagnostic,

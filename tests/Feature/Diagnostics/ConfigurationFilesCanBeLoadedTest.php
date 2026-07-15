@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\ConfigurationFilesCanBeLoaded;
+use Laravel\Doctor\Results\Link;
 
 function doctor_configuration_files_base_path(): string
 {
@@ -21,5 +22,6 @@ it('reports configuration files that cannot load', function (): void {
     $result = (new ConfigurationFilesCanBeLoaded)->check();
 
     expect($result->status->value)->toBe('fail')
-        ->and($result->details)->toBe('broken.php: broken config');
+        ->and($result->details)->toBe('broken.php: broken config')
+        ->and($result->links)->toEqual([Link::docs('configuration')]);
 });

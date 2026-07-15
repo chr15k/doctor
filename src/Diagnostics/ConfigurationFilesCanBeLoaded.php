@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Throwable;
 
@@ -22,7 +23,9 @@ class ConfigurationFilesCanBeLoaded extends Diagnostic
     {
         return [
             'missing' => 'The application does not have configuration files.',
-            'load-failed' => 'A configuration file could not be loaded.',
+            'load-failed' => Message::make(
+                summary: 'A configuration file could not be loaded.',
+            )->link(Link::docs('configuration')),
             'loaded' => 'Configuration files can be loaded.',
         ];
     }

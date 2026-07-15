@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\BootstrapCacheMatchesEnvironment;
+use Laravel\Doctor\Results\Link;
 
 function doctor_cached_bootstrap_base_path(): string
 {
@@ -37,7 +38,8 @@ it('warns when bootstrap files are not cached outside local environments', funct
     $result = (new BootstrapCacheMatchesEnvironment)->check();
 
     expect($result->status->value)->toBe('warn')
-        ->and($result->summary)->toBe('The application bootstrap files are not cached.');
+        ->and($result->summary)->toBe('The application bootstrap files are not cached.')
+        ->and($result->links)->toEqual([Link::docs('deployment', 'optimization')]);
 });
 
 it('notices when bootstrap files are cached locally', function (): void {
@@ -58,7 +60,8 @@ it('notices when bootstrap files are cached locally', function (): void {
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('Cached bootstrap files detected: config, events, routes and views.')
         ->and($result->details)->toBeNull()
-        ->and($result->remediation)->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.');
+        ->and($result->remediation)->toBe('If recent changes are not appearing, run `php artisan optimize:clear`.')
+        ->and($result->links)->toEqual([Link::docs('configuration', 'configuration-caching')]);
 });
 
 it('notices when one bootstrap file is cached locally', function (): void {

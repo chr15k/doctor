@@ -4,6 +4,7 @@ use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Process;
 use Laravel\Doctor\Diagnostics\PublicStorageLinkExists;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 
 function doctor_public_storage_link_base_path(): string
 {
@@ -40,6 +41,7 @@ it('reports a missing public storage link and can fix it', function (): void {
     expect($result->status->value)->toBe('fail')
         ->and($result->confirmation)->toBe('Create the public storage link using `php artisan storage:link`?')
         ->and($result->remediation)->toBe('Create the public storage link with `php artisan storage:link`.')
+        ->and($result->links)->toEqual([Link::docs('filesystem', 'the-public-disk')])
         ->and($fix->status->value)->toBe('pass');
 });
 

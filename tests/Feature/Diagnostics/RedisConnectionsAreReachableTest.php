@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Redis;
 use Laravel\Doctor\Diagnostics\RedisConnectionsAreReachable;
+use Laravel\Doctor\Results\Link;
 
 it('passes when configured Redis connections respond', function (): void {
     config([
@@ -96,4 +97,27 @@ it('skips when redis is only scaffolded and unused', function (): void {
     $result = (new RedisConnectionsAreReachable)->check();
 
     expect($result->status->value)->toBe('skip');
+});
+
+it('links to Redis configuration when an active connection cannot be reached', function (): void {
+    config([
+        'cache.default' => 'redis',
+        'cache.stores.redis' => [
+            'driver' => 'redis',
+            'connection' => 'default',
+        ],
+    ]);
+
+    Redis::swap(new class
+    {
+        public function connection(string $name): object
+        {
+            throw new RuntimeException("Redis connection [{$name}] is unavailable.");
+        }
+    });
+
+    $result = (new RedisConnectionsAreReachable)->check();
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->links)->toEqual([Link::docs('redis', 'configuration')]);
 });

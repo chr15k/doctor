@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class BootstrapCacheMatchesEnvironment extends Diagnostic
@@ -25,13 +26,13 @@ class BootstrapCacheMatchesEnvironment extends Diagnostic
             'uncached-production' => Message::make(
                 summary: 'The application bootstrap files are not cached.',
                 remediation: 'Run `php artisan optimize` or `php artisan config:cache` during deployment.',
-            ),
+            )->link(Link::docs('deployment', 'optimization')),
             'uncached-local' => 'The application bootstrap files are not cached.',
             'cached-production' => 'The application bootstrap files are cached.',
             'cached-local' => Message::make(
                 summary: 'Cached bootstrap {files} detected: {cached}.',
                 remediation: 'If recent changes are not appearing, run `php artisan optimize:clear`.',
-            ),
+            )->link(Link::docs('deployment', 'optimization')),
         ];
     }
 

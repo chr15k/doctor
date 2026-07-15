@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\QueueConnectionIsAsynchronous;
+use Laravel\Doctor\Results\Link;
 
 it('passes when queues run synchronously', function (): void {
     $this->app->detectEnvironment(fn (): string => 'local');
@@ -22,7 +23,8 @@ it('warns when queues run synchronously in production', function (): void {
     $result = (new QueueConnectionIsAsynchronous)->check();
 
     expect($result->status->value)->toBe('warn')
-        ->and($result->summary)->toBe('Queued jobs run synchronously in production.');
+        ->and($result->summary)->toBe('Queued jobs run synchronously in production.')
+        ->and($result->links)->toEqual([Link::docs('queues', 'connections-vs-queues')]);
 });
 
 it('warns when queues run synchronously in unmapped environments', function (): void {
@@ -46,7 +48,8 @@ it('notices when queued jobs are processed asynchronously locally', function ():
 
     expect($result->status->value)->toBe('notice')
         ->and($result->summary)->toBe('Queued jobs are processed asynchronously.')
-        ->and($result->remediation)->toBe('If jobs are not being processed, make sure a queue worker is running via `php artisan queue:work`.');
+        ->and($result->remediation)->toBe('If jobs are not being processed, make sure a queue worker is running via `php artisan queue:work`.')
+        ->and($result->links)->toEqual([Link::docs('queues', 'running-the-queue-worker')]);
 });
 
 it('passes when queued jobs are processed asynchronously outside local environments', function (): void {

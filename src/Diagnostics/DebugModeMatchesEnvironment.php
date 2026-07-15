@@ -8,6 +8,7 @@ use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\EnvironmentMode;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class DebugModeMatchesEnvironment extends Diagnostic implements Fixable
@@ -28,7 +29,7 @@ class DebugModeMatchesEnvironment extends Diagnostic implements Fixable
                 summary: 'Debug mode is enabled in production.',
                 remediation: 'Set APP_DEBUG=false in production.',
                 confirmation: 'Set APP_DEBUG=false in the application environment file?',
-            ),
+            )->link(Link::docs('configuration', 'debug-mode')),
             'matches' => 'Debug mode matches the application environment.',
             'already-disabled' => 'Debug mode is already disabled.',
             'disable-failed' => 'Debug mode could not be disabled in the application environment file.',

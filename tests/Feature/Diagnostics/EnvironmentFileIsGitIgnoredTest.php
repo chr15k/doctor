@@ -3,6 +3,7 @@
 use Laravel\Doctor\Diagnostics\EnvironmentFileIsGitIgnored;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
+use Laravel\Doctor\Results\Link;
 
 function doctor_environment_ignored_base_path(): string
 {
@@ -37,7 +38,8 @@ it('adds .env to an existing .gitignore when fixed', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->fixable)->toBeTrue()
-        ->and($result->confirmation)->toBe('Add .env to .gitignore?');
+        ->and($result->confirmation)->toBe('Add .env to .gitignore?')
+        ->and($result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome($diagnostic, $result));
 
@@ -57,7 +59,8 @@ it('creates a .gitignore that ignores .env when fixed', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->fixable)->toBeTrue()
-        ->and($result->confirmation)->toBe('Create a .gitignore file that ignores .env?');
+        ->and($result->confirmation)->toBe('Create a .gitignore file that ignores .env?')
+        ->and($result->links)->toEqual([Link::docs('configuration', 'environment-configuration')]);
 
     $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome($diagnostic, $result));
 

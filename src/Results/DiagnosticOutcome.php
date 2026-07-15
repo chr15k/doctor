@@ -66,7 +66,7 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
             'summary' => $this->result->summary,
             'details' => $this->result->details,
             'remediation' => $this->result->remediation,
-            'links' => $this->result->links,
+            'links' => $this->links(),
         ];
     }
 
@@ -77,6 +77,20 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
      */
     public function jsonSerialize(): array
     {
-        return [...$this->toArray(), 'links' => (object) $this->result->links];
+        return [...$this->toArray(), 'links' => (object) $this->links(agent: true)];
+    }
+
+    /**
+     * Get the result's links keyed by label.
+     *
+     * @return array<string, string>
+     */
+    protected function links(bool $agent = false): array
+    {
+        return array_column(
+            $this->result->links,
+            $agent ? 'agentUrl' : 'url',
+            'label',
+        );
     }
 }

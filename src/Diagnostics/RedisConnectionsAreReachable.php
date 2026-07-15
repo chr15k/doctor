@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Redis;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 use Laravel\Doctor\Support\Details;
@@ -28,7 +29,7 @@ class RedisConnectionsAreReachable extends Diagnostic
             'unreachable' => Message::make(
                 summary: 'The application cannot reach every active Redis connection.',
                 remediation: 'Check Redis host, port, credentials, and client configuration.',
-            ),
+            )->link(Link::docs('redis', 'configuration')),
             'reachable' => 'The application can reach every active Redis connection.',
         ];
     }

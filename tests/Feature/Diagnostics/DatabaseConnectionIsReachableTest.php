@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Connectors\ConnectorInterface;
 use Laravel\Doctor\Diagnostics\DatabaseConnectionIsReachable;
+use Laravel\Doctor\Results\Link;
 
 it('checks the default database connection', function (): void {
     config([
@@ -66,4 +67,32 @@ it('adds a bounded PDO timeout to transient probes', function (): void {
         ->and($probe->configuration)->toBeArray()
         ->and($probe->configuration)->not->toHaveKey('connect_timeout')
         ->and($probe->configuration['options'][PDO::ATTR_TIMEOUT])->toBe(2);
+});
+
+it('links to database configuration when the connection cannot be reached', function (): void {
+    config([
+        'database.default' => 'pgsql',
+        'database.connections.pgsql' => [
+            'driver' => 'pgsql',
+            'host' => '127.0.0.1',
+            'database' => 'laravel',
+        ],
+    ]);
+
+    $this->app->bind('db.connector.pgsql', fn (): ConnectorInterface => new class implements ConnectorInterface
+    {
+        /**
+         * @param  array<string, mixed>  $config
+         */
+        public function connect(array $config): PDO
+        {
+            throw new RuntimeException('Database unavailable.');
+        }
+    });
+
+    $result = (new DatabaseConnectionIsReachable)->check();
+
+    expect($result->status->value)->toBe('fail')
+        ->and($result->details)->toBe('Database unavailable.')
+        ->and($result->links)->toEqual([Link::docs('database', 'configuration')]);
 });

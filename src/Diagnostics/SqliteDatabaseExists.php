@@ -7,6 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 
@@ -31,7 +32,7 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
                 summary: 'The SQLite database file does not exist.',
                 remediation: 'Create the SQLite database file with `touch {database}`.',
                 confirmation: 'Create the SQLite database file?',
-            ),
+            )->link(Link::docs('database', 'configuration')),
             'already-exists' => 'The SQLite database file already exists.',
             'creation-failed' => 'The SQLite database file could not be created.',
             'created' => 'The SQLite database file was created.',

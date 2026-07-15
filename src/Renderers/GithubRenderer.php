@@ -68,8 +68,8 @@ class GithubRenderer
             $parts[] = $outcome->result->remediation;
         }
 
-        foreach ($outcome->result->links as $label => $url) {
-            $parts[] = sprintf('%s: %s', $label, $url);
+        foreach ($outcome->result->links as $link) {
+            $parts[] = $link->url;
         }
 
         return implode(' ', $parts);

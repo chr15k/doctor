@@ -7,6 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class EnvironmentFileExists extends Diagnostic implements Fixable
@@ -28,12 +29,12 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
                 summary: 'The application does not have an environment file.',
                 remediation: 'Create a .env file with the application\'s environment variables.',
                 confirmation: 'Create an empty .env file?',
-            ),
+            )->link(Link::docs('configuration', 'environment-configuration')),
             'missing-with-example' => Message::make(
                 summary: 'The application does not have an environment file.',
                 remediation: 'Run `cp .env.example .env`, then review the copied values.',
                 confirmation: 'Copy .env.example to .env?',
-            ),
+            )->link(Link::docs('configuration', 'environment-configuration')),
             'already-exists' => 'The .env file already exists.',
             'creation-failed' => 'The .env file could not be created from .env.example.',
             'created' => 'The .env file was created from .env.example.',

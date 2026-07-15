@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostics\QueueConnectionIsReachable;
+use Laravel\Doctor\Results\Link;
 
 it('reports a missing database queue table', function (): void {
     config([
@@ -18,5 +19,6 @@ it('reports a missing database queue table', function (): void {
     $result = (new QueueConnectionIsReachable)->check();
 
     expect($result->status->value)->toBe('fail')
-        ->and($result->details)->toContain('doctor_jobs');
+        ->and($result->details)->toContain('doctor_jobs')
+        ->and($result->links)->toEqual([Link::docs('queues')]);
 });

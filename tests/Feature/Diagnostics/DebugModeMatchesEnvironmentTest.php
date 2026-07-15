@@ -3,6 +3,7 @@
 use Laravel\Doctor\Diagnostics\DebugModeMatchesEnvironment;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
+use Laravel\Doctor\Results\Link;
 
 function doctor_debug_environment_path(string $contents): string
 {
@@ -23,7 +24,8 @@ it('reports debug mode in production', function (): void {
     expect($result->status->value)->toBe('fail')
         ->and($result->summary)->toBe('Debug mode is enabled in production.')
         ->and($result->fixable)->toBeTrue()
-        ->and($result->confirmation)->toBe('Set APP_DEBUG=false in the application environment file?');
+        ->and($result->confirmation)->toBe('Set APP_DEBUG=false in the application environment file?')
+        ->and($result->links)->toEqual([Link::docs('configuration', 'debug-mode')]);
 });
 
 it('treats unmapped environments as production', function (): void {

@@ -7,6 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Details;
 
@@ -31,7 +32,7 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
                 summary: 'The public storage link does not exist.',
                 remediation: 'Create the public storage link with `php artisan storage:link`.',
                 confirmation: 'Create the public storage link using `php artisan storage:link`?',
-            ),
+            )->link(Link::docs('filesystem', 'the-public-disk')),
             'creation-failed' => 'The public storage link could not be created.',
             'created' => 'The public storage link was created.',
         ];

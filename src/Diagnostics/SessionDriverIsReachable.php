@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 use RuntimeException;
@@ -31,7 +32,7 @@ class SessionDriverIsReachable extends Diagnostic
             'unreachable' => Message::make(
                 summary: 'The application cannot reach the default session driver.',
                 remediation: 'Check SESSION_DRIVER and the backing session store configuration.',
-            ),
+            )->link(Link::docs('session', 'configuration')),
             'reachable' => 'The application can reach the default session driver.',
         ];
     }

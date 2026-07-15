@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Diagnostics;
 
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\ActiveDrivers;
 use Laravel\Doctor\Support\Configured;
@@ -28,7 +29,7 @@ class RequiredConfigurationValuesAreSet extends Diagnostic
             'missing' => Message::make(
                 summary: 'Some configuration values required by the active drivers are not set.',
                 remediation: 'Set the missing values, typically by defining their environment variables in .env or the deployment environment.',
-            ),
+            )->link(Link::docs('configuration', 'environment-configuration')),
         ];
     }
 

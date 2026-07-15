@@ -144,8 +144,8 @@ abstract class Diagnostic
             $result->confirmUsing(Str::swap($tokens, $definition->confirmation));
         }
 
-        foreach ($definition->links as $label => $url) {
-            $result->link(Str::swap($tokens, $label), Str::swap($tokens, $url));
+        foreach ($definition->links as $link) {
+            $result->link($link->replace($tokens));
         }
 
         return $result;

@@ -5,6 +5,7 @@ namespace Laravel\Doctor\Diagnostics;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 use Laravel\Doctor\Support\Configured;
 use RuntimeException;
@@ -29,7 +30,7 @@ class FilesystemDisksAreReachable extends Diagnostic
             'unreachable' => Message::make(
                 summary: 'The application cannot reach the default filesystem disk.',
                 remediation: 'Check filesystem disk roots, credentials, and network access.',
-            ),
+            )->link(Link::docs('filesystem', 'configuration')),
             'reachable' => 'The application can reach the default filesystem disk.',
         ];
     }

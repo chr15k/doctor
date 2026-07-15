@@ -7,6 +7,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
@@ -27,13 +28,13 @@ class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
                 summary: 'The application does not have a .gitignore file.',
                 remediation: 'Create a .gitignore file that includes .env so secrets are not committed.',
                 confirmation: 'Create a .gitignore file that ignores .env?',
-            ),
+            )->link(Link::docs('configuration', 'environment-configuration')),
             'ignored' => 'Environment files are ignored by Git.',
             'not-ignored' => Message::make(
                 summary: 'Environment files are not ignored by Git.',
                 remediation: 'Add .env to .gitignore so secrets are not committed.',
                 confirmation: 'Add .env to .gitignore?',
-            ),
+            )->link(Link::docs('configuration', 'environment-configuration')),
             'already-ignored' => 'Environment files are already ignored by Git.',
             'update-failed' => 'The .gitignore file could not be updated.',
             'updated' => '.env was added to .gitignore.',
@@ -67,11 +68,6 @@ class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
             return $this->fixed('already-ignored');
         }
 
-        if (File::exists($path) && ! is_writable($path)) {
-            return $this->fixFailed('update-failed')
-                ->withDetails(sprintf('The file [%s] is not writable.', $path));
-        }
-
         $contents = File::exists($path) ? File::get($path) : '';
         $prefix = $contents !== '' && ! str_ends_with($contents, PHP_EOL) ? PHP_EOL : '';
 
@@ -90,13 +86,11 @@ class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
         $ignored = false;
 
         foreach ($this->patterns() as $pattern) {
-            if ($this->isNegated($pattern) && $this->matches(substr($pattern, 1), $path)) {
-                $ignored = false;
-
-                continue;
-            }
-
-            if (! $this->isNegated($pattern) && $this->matches($pattern, $path)) {
+            if (str_starts_with($pattern, '!')) {
+                if (fnmatch(substr($pattern, 1), $path)) {
+                    $ignored = false;
+                }
+            } elseif (fnmatch($pattern, $path)) {
                 $ignored = true;
             }
         }
@@ -107,55 +101,14 @@ class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
     /**
      * Get normalized .gitignore patterns.
      *
-     * @return list<string>
+     * @return iterable<string>
      */
-    private function patterns(): array
+    private function patterns(): iterable
     {
-        $patterns = [];
-
-        foreach (File::lines($this->gitignorePath()) as $line) {
-            if (! is_string($line)) {
-                continue;
-            }
-
-            $pattern = $this->normalizePattern($line);
-
-            if ($pattern !== '') {
-                $patterns[] = $pattern;
-            }
-        }
-
-        return $patterns;
-    }
-
-    /**
-     * Normalize a .gitignore pattern line.
-     */
-    private function normalizePattern(string $pattern): string
-    {
-        $pattern = trim($pattern);
-
-        if ($pattern === '' || str_starts_with($pattern, '#')) {
-            return '';
-        }
-
-        return ltrim($pattern, '/');
-    }
-
-    /**
-     * Determine whether a .gitignore pattern is negated.
-     */
-    private function isNegated(string $pattern): bool
-    {
-        return str_starts_with($pattern, '!');
-    }
-
-    /**
-     * Determine whether a pattern matches a path.
-     */
-    private function matches(string $pattern, string $path): bool
-    {
-        return fnmatch($pattern, $path) || fnmatch($pattern, basename($path));
+        return File::lines($this->gitignorePath())
+            ->map(fn (string $line): string => trim($line))
+            ->reject(fn (string $line): bool => $line === '' || str_starts_with($line, '#'))
+            ->map(fn (string $line): string => ltrim($line, '/'));
     }
 
     /**

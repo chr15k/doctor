@@ -20,9 +20,9 @@ class DiagnosticResult
     public ?string $remediation = null;
 
     /**
-     * The documentation links for the result.
+     * The related links for the result.
      *
-     * @var array<string, string>
+     * @var list<Link>
      */
     public array $links = [];
 
@@ -139,11 +139,11 @@ class DiagnosticResult
     }
 
     /**
-     * Add a documentation link to the diagnostic result.
+     * Add a related link to the diagnostic result.
      */
-    public function link(string $label, string $url): static
+    public function link(Link $link): static
     {
-        $this->links[$label] = $url;
+        $this->links[] = $link;
 
         return $this;
     }

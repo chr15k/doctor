@@ -188,6 +188,7 @@ use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
@@ -205,7 +206,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
                 summary: 'The application key is not configured.',
                 remediation: 'Generate an application key with `php artisan key:generate`.',
                 confirmation: 'Generate an application key using `php artisan key:generate`?',
-            ),
+            )->link(Link::docs('encryption')),
 
             'generated' => 'The application key was generated.',
 
@@ -241,6 +242,15 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
 ```
 
 Diagnostics should explain what failed and how to recover. Copy lives in the `messages()` registry: a plain string is used as the result's summary, while `Message::make()` may also provide remediation text, documentation links, or a confirmation prompt for fixes.
+
+Use `Link::docs()` for Laravel documentation and `Link::to()` for other destinations. Laravel documentation links are versionless in human-facing output, while JSON intended for agents automatically receives the clean `.md` variant:
+
+```php
+Message::make(
+    summary: 'Queued jobs run synchronously in production.',
+    remediation: 'Configure a background queue driver.',
+)->link(Link::docs('queues', 'connections-vs-queues'));
+```
 
 Statuses are declared where the decision is made. Return `$this->pass()`, `$this->fail()`, `$this->warn()`, `$this->notice()`, `$this->skip()`, or `$this->error()` from `check()`, and `$this->fixed()` or `$this->fixFailed()` from `fix()`. Each result also receives a stable machine-readable code derived from the class and message names, such as `application-key-is-set.missing`.
 

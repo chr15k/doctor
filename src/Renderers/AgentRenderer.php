@@ -67,8 +67,8 @@ class AgentRenderer
             'details' => $outcome->result->details,
             'fix' => $outcome->result->remediation,
             'fixable' => $outcome->fixable() ?: null,
-            'links' => $outcome->result->links === [] ? null : $outcome->result->links,
-        ], static fn (mixed $value): bool => $value !== null);
+            'links' => array_column($outcome->result->links, 'agentUrl', 'label'),
+        ], static fn (mixed $value): bool => $value !== null && $value !== []);
     }
 
     /**

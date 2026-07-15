@@ -238,6 +238,46 @@ it('renders issue details under a heading distinct from the suggested fix', func
     ]);
 });
 
+it('renders related links beneath the suggested fix as prompt links with shortened URLs', function (): void {
+    $renderer = new class(new OutputStyle(new ArrayInput([]), new NullOutput)) extends CliRenderer
+    {
+        public function content(DiagnosticOutcome $outcome): array
+        {
+            return $this->diagnosticCalloutContent($outcome);
+        }
+
+        /**
+         * @param  list<DiagnosticOutcome>  $outcomes
+         */
+        public function notices(array $outcomes): array
+        {
+            return $this->noticesCalloutContent($outcomes);
+        }
+    };
+
+    $outcome = new DiagnosticOutcome(new LinkedDiagnostic, (new LinkedDiagnostic)->check());
+
+    expect($renderer->content($outcome))->toEqual([
+        'The linked diagnostic warned.',
+        Element::heading('Details'),
+        'Detailed link context.',
+        Element::heading('Suggested fix'),
+        'Follow the linked documentation.',
+        Element::link(
+            'https://laravel.com/docs/queues#connections-vs-queues',
+            'laravel.com/docs/queues',
+        ),
+        Element::link('https://example.com/links', 'example.com/links'),
+    ])->and($renderer->notices([$outcome]))->toEqual([
+        'The linked diagnostic warned. Detailed link context. Follow the linked documentation.',
+        Element::link(
+            'https://laravel.com/docs/queues#connections-vs-queues',
+            'laravel.com/docs/queues',
+        ),
+        Element::link('https://example.com/links', 'example.com/links'),
+    ]);
+});
+
 it('renders issue callout sources with package footer', function (): void {
     config(['app.key' => '']);
 
@@ -255,7 +295,11 @@ it('renders issue callout sources with package footer', function (): void {
         ->toContain('Suggested fix')
         ->toContain('Generate an application key with')
         ->toContain('php artisan key:generate')
+        ->toContain('https://laravel.com/docs/encryption')
         ->toContain('laravel/doctor')
+        ->not->toContain('docs:')
+        ->not->toContain('Encryption documentation')
+        ->not->toContain('Links')
         ->not->toContain('Confirmation')
         ->not->toContain('Generate an application key using `php artisan key:generate`?')
         ->not->toContain('File:')
@@ -285,7 +329,11 @@ it('renders notice diagnostics without diagnostic source noise', function (): vo
         ->toContain('Notice')
         ->toContain('Cached bootstrap files detected: events and views.')
         ->toContain('optimize:clear')
+        ->toContain('https://laravel.com/docs/configuration#configuration-caching')
         ->not->toContain('Suggested fix')
+        ->not->toContain('docs:')
+        ->not->toContain('Configuration documentation')
+        ->not->toContain('Links')
         ->not->toContain('Notes:')
         ->not->toContain('[notice]')
         ->not->toContain('Bootstrap cache matches environment (laravel/doctor)')
@@ -327,7 +375,12 @@ it('renders multiple notice diagnostics in a single callout', function (): void 
         ->toContain('laravel/doctor')
         ->toContain('optimize:clear')
         ->toContain('queue:work')
+        ->toMatch('/Cached bootstrap files detected.*optimize:clear.*https:\/\/laravel\.com\/docs\/configuration#configuration-caching.*Queued jobs are processed asynchronously.*queue:work.*https:\/\/laravel\.com\/docs\/queues#running-the-queue-worker/s')
         ->not->toContain('Suggested fix')
+        ->not->toContain('docs:')
+        ->not->toContain('Configuration documentation')
+        ->not->toContain('Queues documentation')
+        ->not->toContain('Links')
         ->and(substr_count($contents, 'Notice'))->toBe(1)
         ->and($exitCode)->toBe(0);
 });
@@ -386,8 +439,12 @@ it('renders diagnostic links in cli output', function (): void {
         ->toContain('Detailed link context.')
         ->toContain('Follow the linked documentation.')
         ->not->toContain('[warn]')
-        ->toContain('Laravel Docs')
-        ->toContain('https://laravel.com/docs')
+        ->toContain('https://laravel.com/docs/queues#connections-vs-queues')
+        ->toContain('https://example.com/links')
+        ->not->toContain('docs:')
+        ->not->toContain('Queues documentation')
+        ->not->toContain('Related links guide')
+        ->not->toContain('Links')
         ->and($exitCode)->toBe(0);
 });
 
@@ -410,7 +467,10 @@ it('renders diagnostic links in json output', function (): void {
         'application' => true,
     ])
         ->and($payload['diagnostics'][0]['fixable'])->toBeFalse()
-        ->and($payload['diagnostics'][0]['links'])->toBe(['Laravel Docs' => 'https://laravel.com/docs'])
+        ->and($payload['diagnostics'][0]['links'])->toBe([
+            'Queues documentation' => 'https://laravel.com/docs/queues.md',
+            'Related links guide' => 'https://example.com/links',
+        ])
         ->and($exitCode)->toBe(0);
 });
 
@@ -451,7 +511,11 @@ it('renders diagnostic links in github output', function (): void {
 
     expect($output->fetch())
         ->toContain('title=Testing diagnostic has links (laravel/doctor)')
-        ->toContain('Laravel Docs: https://laravel.com/docs')
+        ->toContain('https://laravel.com/docs/queues#connections-vs-queues')
+        ->toContain('https://example.com/links')
+        ->not->toContain('docs:')
+        ->not->toContain('Queues documentation')
+        ->not->toContain('Related links guide')
         ->and($exitCode)->toBe(0);
 });
 
@@ -494,7 +558,10 @@ it('renders agent output when an agent is detected', function (): void {
             'summary' => 'The linked diagnostic warned.',
             'details' => 'Detailed link context.',
             'fix' => 'Follow the linked documentation.',
-            'links' => ['Laravel Docs' => 'https://laravel.com/docs'],
+            'links' => [
+                'Queues documentation' => 'https://laravel.com/docs/queues.md',
+                'Related links guide' => 'https://example.com/links',
+            ],
         ]])
         ->and($payload)->not->toHaveKey('fixes')
         ->and($exitCode)->toBe(0);

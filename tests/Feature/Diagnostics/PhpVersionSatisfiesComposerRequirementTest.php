@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\PhpVersionSatisfiesComposerRequirement;
+use Laravel\Doctor\Results\Link;
 
 function doctor_php_version_base_path(): string
 {
@@ -25,5 +26,6 @@ it('reports when PHP does not satisfy composer.json', function (): void {
 
     expect($result->status->value)->toBe('fail')
         ->and($result->summary)->toBe(sprintf('PHP %s does not satisfy [<1.0].', PHP_VERSION))
-        ->and($result->details)->toBeNull();
+        ->and($result->details)->toBeNull()
+        ->and($result->links)->toEqual([Link::docs('deployment', 'server-requirements')]);
 });
