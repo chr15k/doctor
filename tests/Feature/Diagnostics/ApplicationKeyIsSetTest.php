@@ -39,7 +39,7 @@ it('reports a missing application key', function (): void {
     expect($outcome->result->status->value)->toBe('fail')
         ->and($outcome->result->code)->toBe('application-key-is-set.missing')
         ->and($outcome->result->summary)->toBe('The application key is not configured.')
-        ->and($outcome->result->confirmation)->toBe('Generate an application key using `php artisan key:generate`?')
+        ->and($outcome->result->confirmation)->toBe('Generate an application key?')
         ->and($outcome->result->remediation)->toBe('Generate an application key with `php artisan key:generate`.');
 });
 
@@ -58,11 +58,11 @@ it('generates an application key when fixed', function (): void {
     expect($fix->result->status->value)->toBe('pass')
         ->and($fix->result->code)->toBe('application-key-is-set.fix.generated')
         ->and($fix->result->summary)->toBe('The application key was generated.')
-        ->and(file_get_contents($environmentPath.'/.env'))->toContain('APP_KEY=base64:')
+        ->and(file_get_contents($environmentPath.'/.env'))->toContain('base64:')
         ->and(str_starts_with((string) config('app.key'), 'base64:'))->toBeTrue();
 });
 
-it('reports when the environment file has no APP_KEY variable', function (): void {
+it('adds an application key when the environment file has no APP_KEY variable', function (): void {
     config(['app.key' => '']);
 
     $environmentPath = doctor_application_key_environment_path("APP_NAME=Laravel\n");
@@ -74,10 +74,12 @@ it('reports when the environment file has no APP_KEY variable', function (): voi
         DiagnosticResult::fail('The application key is not configured.')->fixable(),
     ));
 
-    expect($fix->result->status->value)->toBe('fail')
-        ->and($fix->result->code)->toBe('application-key-is-set.fix.generation-failed')
-        ->and($fix->result->details)->toContain('Unable to set application key')
-        ->and(file_get_contents($environmentPath.'/.env'))->toBe("APP_NAME=Laravel\n");
+    expect($fix->result->status->value)->toBe('pass')
+        ->and($fix->result->code)->toBe('application-key-is-set.fix.generated')
+        ->and(file_get_contents($environmentPath.'/.env'))
+        ->toContain("APP_NAME=Laravel\n")
+        ->toContain('APP_KEY=')
+        ->toContain('base64:');
 });
 
 it('reports when the application key cannot be written to the environment file', function (): void {

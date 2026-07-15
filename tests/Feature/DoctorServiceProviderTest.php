@@ -92,7 +92,7 @@ it('does not repeat diagnostics that were fixed', function (): void {
     $contents = $output->fetch();
 
     expect(file_get_contents($environmentPath.'/.env'))
-        ->toContain('APP_KEY=base64:')
+        ->toContain('base64:')
         ->and($contents)->toContain('Re-running diagnostics after applying fixes...')
         ->and($contents)->toMatch('/Re-running diagnostics after applying fixes\.\.\..*Results.*App key is set/s')
         ->and($contents)->toContain('App key is set')

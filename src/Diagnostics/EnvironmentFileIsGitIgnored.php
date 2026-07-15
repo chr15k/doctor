@@ -3,11 +3,13 @@
 namespace Laravel\Doctor\Diagnostics;
 
 use Illuminate\Support\Facades\File;
+use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
 
-class EnvironmentFileIsGitIgnored extends Diagnostic
+class EnvironmentFileIsGitIgnored extends Diagnostic implements Fixable
 {
     public string $name = '.env is gitignored';
 
@@ -24,12 +26,17 @@ class EnvironmentFileIsGitIgnored extends Diagnostic
             'gitignore-missing' => Message::make(
                 summary: 'The application does not have a .gitignore file.',
                 remediation: 'Create a .gitignore file that includes .env so secrets are not committed.',
+                confirmation: 'Create a .gitignore file that ignores .env?',
             ),
             'ignored' => 'Environment files are ignored by Git.',
             'not-ignored' => Message::make(
                 summary: 'Environment files are not ignored by Git.',
                 remediation: 'Add .env to .gitignore so secrets are not committed.',
+                confirmation: 'Add .env to .gitignore?',
             ),
+            'already-ignored' => 'Environment files are already ignored by Git.',
+            'update-failed' => 'The .gitignore file could not be updated.',
+            'updated' => '.env was added to .gitignore.',
         ];
     }
 
@@ -39,14 +46,40 @@ class EnvironmentFileIsGitIgnored extends Diagnostic
     public function check(): DiagnosticResult
     {
         if (! File::exists($this->gitignorePath())) {
-            return $this->fail('gitignore-missing');
+            return $this->fail('gitignore-missing')->fixable();
         }
 
         if ($this->ignores('.env')) {
             return $this->pass('ignored');
         }
 
-        return $this->fail('not-ignored');
+        return $this->fail('not-ignored')->fixable();
+    }
+
+    /**
+     * Fix the diagnostic.
+     */
+    public function fix(DiagnosticResult $result): FixResult
+    {
+        $path = $this->gitignorePath();
+
+        if (File::exists($path) && $this->ignores('.env')) {
+            return $this->fixed('already-ignored');
+        }
+
+        if (File::exists($path) && ! is_writable($path)) {
+            return $this->fixFailed('update-failed')
+                ->withDetails(sprintf('The file [%s] is not writable.', $path));
+        }
+
+        $contents = File::exists($path) ? File::get($path) : '';
+        $prefix = $contents !== '' && ! str_ends_with($contents, PHP_EOL) ? PHP_EOL : '';
+
+        if (File::put($path, $contents.$prefix.'.env'.PHP_EOL) === false) {
+            return $this->fixFailed('update-failed');
+        }
+
+        return $this->fixed('updated');
     }
 
     /**

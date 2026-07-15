@@ -96,28 +96,25 @@ it('does not overwrite an existing .env when fixed', function (): void {
         ->and(file_get_contents($basePath.'/.env'))->toBe("APP_NAME=Existing\n");
 });
 
-it('does not offer a fix when .env.example is missing', function (): void {
+it('creates an empty .env when .env.example is missing', function (): void {
     $basePath = doctor_environment_base_path();
 
     $this->app->setBasePath($basePath);
 
-    $offered = false;
-
-    $report = $this->app->make(Doctor::class)
-        ->runner(DiagnosticSelection::make(only: ['EnvironmentFileExists']))
-        ->fixUsing(function (DiagnosticOutcome $outcome) use (&$offered): bool {
-            $offered = true;
-
-            return true;
-        })
-        ->run();
-
-    $result = $report->diagnostics()[0]->result;
+    $diagnostic = new EnvironmentFileExists;
+    $result = $diagnostic->check();
 
     expect($result->status->value)->toBe('fail')
-        ->and($result->fixable)->toBeFalse()
-        ->and($result->confirmation)->toBeNull()
-        ->and($result->remediation)->toBe("Create a .env file with the application's environment variables.")
-        ->and($report->fixes())->toBe([])
-        ->and($offered)->toBeFalse();
+        ->and($result->fixable)->toBeTrue()
+        ->and($result->confirmation)->toBe('Create an empty .env file?')
+        ->and($result->remediation)->toBe("Create a .env file with the application's environment variables.");
+
+    $fix = $this->app->make(Doctor::class)->fix(new DiagnosticOutcome(
+        $diagnostic,
+        $result,
+    ));
+
+    expect($fix->result->status->value)->toBe('pass')
+        ->and($fix->result->summary)->toBe('An empty .env file was created.')
+        ->and(file_get_contents($basePath.'/.env'))->toBe('');
 });

@@ -41,6 +41,8 @@ To run available fixes without prompting, pass the `--fix` option:
 php artisan doctor --fix
 ```
 
+First-party fixes cover deterministic local repairs such as creating a missing `.env`, generating `APP_KEY`, disabling production debug mode, adding `.env` to `.gitignore`, creating the public storage link, and repairing writable storage directories.
+
 > [!NOTE]
 > Fixes are only available with the CLI and agent [output formats](#output-formats). With agent output, `--fix` applies every available deterministic fix and reports the outcomes in the payload's `fixes` array. Doctor rejects `--fix` with the JSON and GitHub report formats so machine-readable reports never mutate the application.
 

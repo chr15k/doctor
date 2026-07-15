@@ -27,6 +27,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
             'missing' => Message::make(
                 summary: 'The application does not have an environment file.',
                 remediation: 'Create a .env file with the application\'s environment variables.',
+                confirmation: 'Create an empty .env file?',
             ),
             'missing-with-example' => Message::make(
                 summary: 'The application does not have an environment file.',
@@ -34,9 +35,10 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
                 confirmation: 'Copy .env.example to .env?',
             ),
             'already-exists' => 'The .env file already exists.',
-            'example-missing' => 'The .env.example file does not exist.',
             'creation-failed' => 'The .env file could not be created from .env.example.',
             'created' => 'The .env file was created from .env.example.',
+            'empty-creation-failed' => 'The empty .env file could not be created.',
+            'empty-created' => 'An empty .env file was created.',
         ];
     }
 
@@ -53,7 +55,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
             return $this->fail('missing-with-example')->fixable();
         }
 
-        return $this->fail('missing');
+        return $this->fail('missing')->fixable();
     }
 
     /**
@@ -69,7 +71,12 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
         }
 
         if (! is_file($example)) {
-            return $this->fixFailed('example-missing');
+            if (File::put($target, '') === false) {
+                return $this->fixFailed('empty-creation-failed');
+            }
+
+            return $this->fixed('empty-created')
+                ->withDetails('Add the application environment variables and run `php artisan key:generate`.');
         }
 
         if (! @copy($example, $target)) {

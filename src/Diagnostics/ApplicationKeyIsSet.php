@@ -2,13 +2,13 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Encryption\Encrypter;
+use Illuminate\Support\Env;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Message;
-use Laravel\Doctor\Support\Details;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
@@ -28,7 +28,7 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
             'missing' => Message::make(
                 summary: 'The application key is not configured.',
                 remediation: 'Generate an application key with `php artisan key:generate`.',
-                confirmation: 'Generate an application key using `php artisan key:generate`?',
+                confirmation: 'Generate an application key?',
             ),
             'generated' => 'The application key was generated.',
             'generation-failed' => 'The application key could not be generated.',
@@ -54,22 +54,23 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
     {
         $path = app()->environmentFilePath();
 
-        // The key:generate command reports success even when the write fails...
         if (! is_file($path) || ! is_writable($path)) {
             return $this->fixFailed('generation-failed')
                 ->withDetails(sprintf('The application environment file [%s] could not be updated.', $path));
         }
 
-        Artisan::call('key:generate', ['--force' => true]);
+        $cipher = config('app.cipher');
 
-        if (! $this->keyIsConfigured()) {
+        if (! is_string($cipher) || $cipher === '') {
             return $this->fixFailed('generation-failed')
-                ->withDetails(Details::processOutput(
-                    Artisan::output(),
-                    '',
-                    'The key:generate command did not set an application key.',
-                ));
+                ->withDetails('The application encryption cipher is not configured.');
         }
+
+        $key = 'base64:'.base64_encode(Encrypter::generateKey($cipher));
+
+        Env::writeVariable('APP_KEY', $key, $path, overwrite: true);
+
+        config(['app.key' => $key]);
 
         return $this->fixed('generated');
     }
