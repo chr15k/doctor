@@ -4,10 +4,12 @@ namespace Laravel\Doctor\Console;
 
 use Closure;
 use Illuminate\Console\Command;
+use Laravel\AgentDetector\AgentDetector;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\PendingRun;
+use Laravel\Doctor\Renderers\AgentRenderer;
 use Laravel\Doctor\Renderers\CliRenderer;
 use Laravel\Doctor\Renderers\GithubRenderer;
 use Laravel\Doctor\Results\DiagnosticOutcome;
@@ -29,7 +31,7 @@ class DoctorCommand extends Command
         {--only=* : Run only the specified diagnostic classes, groups, or packages}
         {--except=* : Skip the specified diagnostic classes, groups, or packages}
         {--fix : Run available deterministic fixes without prompting}
-        {--format=cli : Output format: cli, json, or github}
+        {--format=cli : Output format: cli, json, github, or agent}
         {--fail-on=fail : Exit code threshold: fail, warn, or never}';
 
     protected $description = 'Run Laravel Doctor diagnostics';
@@ -57,13 +59,14 @@ class DoctorCommand extends Command
             'cli' => $this->runCli($doctor, $selection, $failOn),
             'json' => $this->runJson($doctor, $selection, $failOn),
             'github' => $this->runGithub($doctor, $selection, $failOn),
+            'agent' => $this->runAgent($doctor, $selection, $failOn),
         };
     }
 
     /**
      * Get the requested output format.
      *
-     * @return 'cli'|'json'|'github'|null
+     * @return 'cli'|'json'|'github'|'agent'|null
      */
     protected function format(): ?string
     {
@@ -71,10 +74,14 @@ class DoctorCommand extends Command
         // Laravel 12 support is dropped (CommandInput requires laravel/framework 13.19+)...
         $format = $this->option('format');
 
-        if (! is_string($format) || ! in_array($format, ['cli', 'json', 'github'], true)) {
-            $this->error('The --format option must be one of: cli, json, github.');
+        if (! is_string($format) || ! in_array($format, ['cli', 'json', 'github', 'agent'], true)) {
+            $this->error('The --format option must be one of: cli, json, github, agent.');
 
             return null;
+        }
+
+        if (! $this->input->hasParameterOption('--format') && AgentDetector::detect()->isAgent) {
+            return 'agent';
         }
 
         return $format;
@@ -101,15 +108,15 @@ class DoctorCommand extends Command
     /**
      * Determine whether the fix option is valid for the format.
      *
-     * @param  'cli'|'json'|'github'  $format
+     * @param  'cli'|'json'|'github'|'agent'  $format
      */
     protected function fixOptionIsValidFor(string $format): bool
     {
-        if ($format === 'cli' || ! (bool) $this->option('fix')) {
+        if ($format === 'cli' || $format === 'agent' || ! (bool) $this->option('fix')) {
             return true;
         }
 
-        $this->error('The --fix option may only be used with --format=cli.');
+        $this->error('The --fix option may only be used with the cli or agent output formats.');
 
         return false;
     }
@@ -172,6 +179,22 @@ class DoctorCommand extends Command
         foreach ((new GithubRenderer)->annotations($report) as $annotation) {
             $this->line($annotation);
         }
+
+        return $this->exitCode($report, $failOn);
+    }
+
+    /**
+     * Run Doctor for agent-optimized output.
+     *
+     * @param  'fail'|'warn'|'never'  $failOn
+     */
+    protected function runAgent(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
+    {
+        $report = $doctor->runner($selection)
+            ->when((bool) $this->option('fix'), fn (PendingRun $runner) => $runner->fixUsing(static fn (): bool => true))
+            ->run();
+
+        $this->line((new AgentRenderer)->render($report));
 
         return $this->exitCode($report, $failOn);
     }

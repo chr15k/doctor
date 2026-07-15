@@ -42,7 +42,7 @@ php artisan doctor --fix
 ```
 
 > [!NOTE]
-> Fixes are only available with the default CLI output. Doctor rejects `--fix` with JSON or GitHub [output formats](#output-formats) so machine-readable reports never mutate the application.
+> Fixes are only available with the CLI and agent [output formats](#output-formats). With agent output, `--fix` applies every available deterministic fix and reports the outcomes in the payload's `fixes` array. Doctor rejects `--fix` with the JSON and GitHub report formats so machine-readable reports never mutate the application.
 
 ## Diagnostic Statuses
 
@@ -331,6 +331,26 @@ php artisan doctor --format=json
 
 php artisan doctor --format=github
 ```
+
+### Agent-Optimized Output
+
+When Doctor detects that it is running inside an AI coding agent such as Claude Code or Cursor — using [Laravel Agent Detector](https://github.com/laravel/agent-detector) — it defaults to an agent-optimized format instead of CLI output. The format follows the [Laravel PAO](https://github.com/laravel/pao) convention: a single line of JSON with aggregate counts up front and only actionable outcomes itemized, letting agents use Doctor as a minimal, parseable completion gate:
+
+```json
+{"tool":"doctor","result":"failed","diagnostics":27,"failed":1,"warnings":1,"notices":0,"passed":19,"skipped":6,"issues":[{"name":".env file exists","status":"fail","summary":"The application does not have an environment file.","fix":"Run `cp .env.example .env`, then review the copied values.","fixable":true}]}
+```
+
+Issues marked `fixable` may be fixed by re-running Doctor with `--fix`, which applies every available deterministic fix, re-runs the diagnostics, and appends the fix outcomes to the payload.
+
+An explicit `--format` option always overrides detection, and the agent format may also be requested directly:
+
+```bash
+php artisan doctor --format=cli
+
+php artisan doctor --format=agent
+```
+
+To preview agent output outside an agent, set the `AI_AGENT` environment variable: `AI_AGENT=test php artisan doctor`.
 
 ## Contributing
 

@@ -430,16 +430,155 @@ it('renders diagnostic links in github output', function (): void {
 
 it('rejects fixes with json output', function (): void {
     $this->artisan('doctor --only=ApplicationKeyIsSet --fix --format=json')
-        ->expectsOutputToContain('The --fix option may only be used with --format=cli.')
+        ->expectsOutputToContain('The --fix option may only be used with the cli or agent output formats.')
         ->doesntExpectOutputToContain('"diagnostics"')
         ->assertExitCode(1);
 });
 
 it('rejects fixes with github output', function (): void {
     $this->artisan('doctor --only=ApplicationKeyIsSet --fix --format=github')
-        ->expectsOutputToContain('The --fix option may only be used with --format=cli.')
+        ->expectsOutputToContain('The --fix option may only be used with the cli or agent output formats.')
         ->doesntExpectOutputToContain('::')
         ->assertExitCode(1);
+});
+
+it('renders agent output when an agent is detected', function (): void {
+    Doctor::diagnostic(LinkedDiagnostic::class);
+
+    putenv('AI_AGENT=laravel-doctor-test');
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'LinkedDiagnostic',
+    ], $output);
+
+    $contents = trim($output->fetch());
+    $payload = json_decode($contents, true, flags: JSON_THROW_ON_ERROR);
+
+    expect($contents)->not->toContain("\n")
+        ->and($payload['tool'])->toBe('doctor')
+        ->and($payload['result'])->toBe('passed')
+        ->and($payload['diagnostics'])->toBe(1)
+        ->and($payload['warnings'])->toBe(1)
+        ->and($payload['issues'])->toBe([[
+            'name' => 'Testing diagnostic has links',
+            'status' => 'warn',
+            'summary' => 'The linked diagnostic warned.',
+            'details' => 'Detailed link context.',
+            'fix' => 'Follow the linked documentation.',
+            'links' => ['Laravel Docs' => 'https://laravel.com/docs'],
+        ]])
+        ->and($payload)->not->toHaveKey('fixes')
+        ->and($exitCode)->toBe(0);
+});
+
+it('prefers an explicit format over agent detection', function (): void {
+    Doctor::diagnostic(LinkedDiagnostic::class);
+
+    putenv('AI_AGENT=laravel-doctor-test');
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'LinkedDiagnostic',
+        '--format' => 'cli',
+    ], $output);
+
+    expect($output->fetch())
+        ->toContain('Testing diagnostic has links')
+        ->toContain('Follow the linked documentation.')
+        ->and($exitCode)->toBe(0);
+});
+
+it('keeps cli output for non-interactive runs outside agents', function (): void {
+    Doctor::diagnostic(LinkedDiagnostic::class);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'LinkedDiagnostic',
+        '--no-interaction' => true,
+    ], $output);
+
+    expect($output->fetch())
+        ->toContain('Testing diagnostic has links')
+        ->toContain('Follow the linked documentation.')
+        ->and($exitCode)->toBe(0);
+});
+
+it('renders minimal agent output when every diagnostic passes', function (): void {
+    Doctor::diagnostic(PassingDiagnostic::class);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'PassingDiagnostic',
+        '--format' => 'agent',
+    ], $output);
+
+    $payload = json_decode(trim($output->fetch()), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload)->toBe([
+        'tool' => 'doctor',
+        'result' => 'passed',
+        'diagnostics' => 1,
+        'failed' => 0,
+        'warnings' => 0,
+        'notices' => 0,
+        'passed' => 1,
+        'skipped' => 0,
+    ])->and($exitCode)->toBe(0);
+});
+
+it('marks fixable issues in agent output', function (): void {
+    Doctor::diagnostic(FixableDiagnostic::class);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'FixableDiagnostic',
+        '--format' => 'agent',
+    ], $output);
+
+    $payload = json_decode(trim($output->fetch()), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['result'])->toBe('failed')
+        ->and($payload['issues'])->toBe([[
+            'name' => 'Testing diagnostic is fixable',
+            'status' => 'fail',
+            'summary' => 'The diagnostic failed.',
+            'fix' => 'Apply the testing diagnostic fix.',
+            'fixable' => true,
+        ]])
+        ->and($payload)->not->toHaveKey('fixes')
+        ->and($exitCode)->toBe(1);
+});
+
+it('applies fixes and reruns for agent output when requested', function (): void {
+    Doctor::diagnostic(FixesSharedStateDiagnostic::class);
+
+    config(['doctor-testing.shared-state-fixed' => false]);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'FixesSharedStateDiagnostic',
+        '--format' => 'agent',
+        '--fix' => true,
+    ], $output);
+
+    $payload = json_decode(trim($output->fetch()), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['result'])->toBe('passed')
+        ->and($payload['passed'])->toBe(1)
+        ->and($payload['fixes'])->toBe([[
+            'name' => 'Testing diagnostic fixes shared state',
+            'status' => 'pass',
+            'summary' => 'The shared state fix ran.',
+        ]])
+        ->and($payload)->not->toHaveKey('issues')
+        ->and($exitCode)->toBe(0);
 });
 
 it('validates fail-on before running diagnostics', function (): void {
