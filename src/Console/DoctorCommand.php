@@ -30,6 +30,7 @@ class DoctorCommand extends Command
     protected $signature = 'doctor
         {--only=* : Run only the specified diagnostic classes, groups, or packages}
         {--except=* : Skip the specified diagnostic classes, groups, or packages}
+        {--bail : Stop after the first failing diagnostic}
         {--fix : Run available deterministic fixes without prompting}
         {--format=cli : Output format: cli, json, github, or agent}
         {--fail-on=fail : Exit code threshold: fail, warn, or never}';
@@ -128,7 +129,7 @@ class DoctorCommand extends Command
      */
     protected function runCli(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
-        $report = $doctor->runner($selection)
+        $report = $this->runner($doctor, $selection)
             ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->observeUsing($this->taskObserver()))
             ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
             ->beforeRerun(function (): void {
@@ -160,7 +161,7 @@ class DoctorCommand extends Command
      */
     protected function runJson(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
-        $report = $doctor->run($selection);
+        $report = $this->runner($doctor, $selection)->run();
 
         $this->line(json_encode($report, JSON_THROW_ON_ERROR));
 
@@ -174,7 +175,7 @@ class DoctorCommand extends Command
      */
     protected function runGithub(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
-        $report = $doctor->run($selection);
+        $report = $this->runner($doctor, $selection)->run();
 
         foreach ((new GithubRenderer)->annotations($report) as $annotation) {
             $this->line($annotation);
@@ -190,7 +191,7 @@ class DoctorCommand extends Command
      */
     protected function runAgent(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
     {
-        $report = $doctor->runner($selection)
+        $report = $this->runner($doctor, $selection)
             ->when((bool) $this->option('fix'), fn (PendingRun $runner) => $runner->fixUsing(static fn (): bool => true))
             ->run();
 
@@ -208,6 +209,14 @@ class DoctorCommand extends Command
             only: $this->optionList('only'),
             except: $this->optionList('except'),
         );
+    }
+
+    /**
+     * Begin a run configured from the command options.
+     */
+    protected function runner(Doctor $doctor, DiagnosticSelection $selection): PendingRun
+    {
+        return $doctor->runner($selection)->bail((bool) $this->option('bail'));
     }
 
     /**

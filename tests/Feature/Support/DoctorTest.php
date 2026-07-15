@@ -245,6 +245,38 @@ it('intersects repeated fluent only constraints', function (): void {
         ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class);
 });
 
+it('bails after the first failing diagnostic', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostics([
+        WarningDiagnostic::class,
+        FixableDiagnostic::class,
+        PassingDiagnostic::class,
+        DatabaseDiagnostic::class,
+    ]);
+
+    $report = $doctor->runner()->bail()->run();
+
+    expect(array_map(
+        static fn (DiagnosticOutcome $outcome): string => $outcome->diagnostic::class,
+        $report->diagnostics(),
+    ))->toBe([
+        WarningDiagnostic::class,
+        FixableDiagnostic::class,
+    ]);
+});
+
+it('treats diagnostic errors as failures when bailing', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostics([
+        ThrowingDiagnostic::class,
+        PassingDiagnostic::class,
+    ]);
+
+    $report = $doctor->runner()->bail()->run();
+
+    expect($report->diagnostics())->toHaveCount(1)
+        ->and($report->diagnostics()[0]->diagnostic::class)->toBe(ThrowingDiagnostic::class)
+        ->and($report->diagnostics()[0]->result->status->value)->toBe('error');
+});
+
 it('applies approved fixes and re-runs the diagnostics', function (): void {
     config(['doctor-testing.shared-state-fixed' => false]);
 

@@ -44,6 +44,7 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\WarningDiagnostic;
 use Laravel\Prompts\Elements\Element;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -58,7 +59,8 @@ it('does not redefine Symfony console verbosity options', function (): void {
     $command = new DoctorCommand;
 
     expect($command->getDefinition()->hasOption('verbose'))->toBeFalse()
-        ->and($command->getDefinition()->hasOption('format'))->toBeTrue();
+        ->and($command->getDefinition()->hasOption('format'))->toBeTrue()
+        ->and($command->getDefinition()->hasOption('bail'))->toBeTrue();
 });
 
 it('loads the default doctor configuration', function (): void {
@@ -410,6 +412,31 @@ it('renders diagnostic links in json output', function (): void {
         ->and($payload['diagnostics'][0]['fixable'])->toBeFalse()
         ->and($payload['diagnostics'][0]['links'])->toBe(['Laravel Docs' => 'https://laravel.com/docs'])
         ->and($exitCode)->toBe(0);
+});
+
+it('bails after the first failure from the command', function (): void {
+    Doctor::diagnostic(WarningDiagnostic::class);
+    Doctor::diagnostic(FixableDiagnostic::class);
+    Doctor::diagnostic(PassingDiagnostic::class);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => [
+            'WarningDiagnostic',
+            'FixableDiagnostic',
+            'PassingDiagnostic',
+        ],
+        '--bail' => true,
+        '--format' => 'json',
+    ], $output);
+
+    $payload = json_decode($output->fetch(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(array_column($payload['diagnostics'], 'class'))->toBe([
+        WarningDiagnostic::class,
+        FixableDiagnostic::class,
+    ])->and($exitCode)->toBe(1);
 });
 
 it('renders diagnostic links in github output', function (): void {

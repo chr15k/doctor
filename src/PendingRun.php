@@ -40,6 +40,11 @@ class PendingRun
     protected ?Closure $beforeRerun = null;
 
     /**
+     * Whether the run should stop after the first failing diagnostic.
+     */
+    protected bool $bail = false;
+
+    /**
      * Create a new pending diagnostic run.
      */
     public function __construct(
@@ -68,6 +73,16 @@ class PendingRun
     public function except(string ...$selectors): self
     {
         $this->selection = $this->selection->constrain(except: $selectors);
+
+        return $this;
+    }
+
+    /**
+     * Stop the run after the first failing diagnostic.
+     */
+    public function bail(bool $bail = true): self
+    {
+        $this->bail = $bail;
 
         return $this;
     }
@@ -143,10 +158,12 @@ class PendingRun
         $outcomes = [];
 
         foreach ($this->doctor->selectedByGroup($this->selection) as $group => $diagnostics) {
-            $outcomes = [
-                ...$outcomes,
-                ...$this->checkGroup($group, $diagnostics),
-            ];
+            $groupOutcomes = $this->checkGroup($group, $diagnostics);
+            $outcomes = [...$outcomes, ...$groupOutcomes];
+
+            if ($this->bail && $this->hasFailure($groupOutcomes)) {
+                break;
+            }
         }
 
         return new DiagnosticReport($outcomes);
@@ -196,9 +213,29 @@ class PendingRun
             if ($after !== null) {
                 $after($outcome);
             }
+
+            if ($this->bail && $outcome->result->status->failed()) {
+                break;
+            }
         }
 
         return $outcomes;
+    }
+
+    /**
+     * Determine whether the outcomes contain a failure.
+     *
+     * @param  list<DiagnosticOutcome>  $outcomes
+     */
+    protected function hasFailure(array $outcomes): bool
+    {
+        foreach ($outcomes as $outcome) {
+            if ($outcome->result->status->failed()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -59,6 +59,16 @@ Every diagnostic returns one of the following statuses. Doctor uses them to rend
 
 By default, the command exits with a failing status when a diagnostic fails or errors. Use `--fail-on=warn` to also fail on warnings, or `--fail-on=never` when Doctor should only report issues.
 
+### Bailing on Failure
+
+Use `--bail` to stop after the first diagnostic that fails or errors. Warnings, notices, passes, and skips do not stop the run:
+
+```bash
+php artisan doctor --bail
+```
+
+The flag works with every output format and may be combined with diagnostic selectors. Programmatic runs may enable the same behavior with `Doctor::runner()->bail()->run()`.
+
 ## Selecting Diagnostics
 
 Diagnostics may be selected or excluded by class name, group, package, or package wildcard. Multiple values may be passed either by repeating the option or by separating values with commas.
