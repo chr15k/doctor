@@ -248,7 +248,7 @@ class DoctorCommand extends Command
     {
         return function (string $group, Closure $next): void {
             task(
-                label: sprintf('Running %s diagnostics...', ucfirst($group)),
+                label: sprintf('%s diagnostics', ucfirst($group)),
                 limit: 0,
                 keepSummary: true,
                 callback: fn (Logger $logger) => $this->observeGroupTask($next, $logger),
