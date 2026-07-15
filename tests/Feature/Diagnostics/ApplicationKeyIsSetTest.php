@@ -1,7 +1,6 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
-use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
@@ -20,7 +19,7 @@ it('passes when the application key is set', function (): void {
     config(['app.key' => 'base64:'.str_repeat('a', 44)]);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['ApplicationKeyIsSet']));
+        ->only('ApplicationKeyIsSet')->run();
 
     $outcome = $report->diagnostics()[0];
 
@@ -32,7 +31,7 @@ it('reports a missing application key', function (): void {
     config(['app.key' => '']);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['ApplicationKeyIsSet']));
+        ->only('ApplicationKeyIsSet')->run();
 
     $outcome = $report->diagnostics()[0];
 

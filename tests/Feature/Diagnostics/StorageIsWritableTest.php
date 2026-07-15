@@ -1,7 +1,6 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\StorageIsWritable;
-use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 use Laravel\Doctor\Results\DiagnosticResult;
@@ -45,7 +44,7 @@ it('passes when laravel can write to the required storage directories', function
     $this->app->setBasePath($basePath);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['StorageIsWritable']));
+        ->only('StorageIsWritable')->run();
 
     $outcome = $report->diagnostics()[0];
 
@@ -60,7 +59,7 @@ it('reports missing writable storage directories', function (): void {
     $this->app->setBasePath($basePath);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['StorageIsWritable']));
+        ->only('StorageIsWritable')->run();
 
     $outcome = $report->diagnostics()[0];
 

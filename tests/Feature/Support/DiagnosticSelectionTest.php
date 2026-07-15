@@ -15,7 +15,7 @@ it('filters diagnostics by group', function (): void {
         DatabaseDiagnostic::class,
     ]);
 
-    $report = $doctor->run(DiagnosticSelection::make(only: ['database']));
+    $report = $doctor->only('database')->run();
 
     expect($report->diagnostics())->toHaveCount(1)
         ->and($report->diagnostics()[0]->diagnostic::class)->toBe(DatabaseDiagnostic::class);
@@ -27,10 +27,10 @@ it('filters diagnostics by class name and excludes groups', function (): void {
         DatabaseDiagnostic::class,
     ]);
 
-    $report = $doctor->run(DiagnosticSelection::make(
-        only: ['PassingDiagnostic,DatabaseDiagnostic'],
-        except: ['database'],
-    ));
+    $report = $doctor
+        ->only('PassingDiagnostic,DatabaseDiagnostic')
+        ->except('database')
+        ->run();
 
     expect($report->diagnostics())->toHaveCount(1)
         ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class);
@@ -50,7 +50,7 @@ it('filters diagnostics by wildcard package selectors', function (): void {
         LaravelPackageDiagnostic::class,
     ]);
 
-    $report = $doctor->run(DiagnosticSelection::make(only: ['laravel/*']));
+    $report = $doctor->only('laravel/*')->run();
 
     expect($report->diagnostics())->toHaveCount(2)
         ->and($report->diagnostics()[0]->diagnostic::class)->toBe(PassingDiagnostic::class)

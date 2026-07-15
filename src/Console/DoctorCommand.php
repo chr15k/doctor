@@ -6,7 +6,6 @@ use Closure;
 use Illuminate\Console\Command;
 use Laravel\AgentDetector\AgentDetector;
 use Laravel\Doctor\Diagnostic;
-use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\PendingRun;
 use Laravel\Doctor\Renderers\AgentRenderer;
@@ -54,13 +53,11 @@ class DoctorCommand extends Command
             return self::FAILURE;
         }
 
-        $selection = $this->selection($doctor);
-
         return match ($format) {
-            'cli' => $this->runCli($doctor, $selection, $failOn),
-            'json' => $this->runJson($doctor, $selection, $failOn),
-            'github' => $this->runGithub($doctor, $selection, $failOn),
-            'agent' => $this->runAgent($doctor, $selection, $failOn),
+            'cli' => $this->runCli($doctor, $failOn),
+            'json' => $this->runJson($doctor, $failOn),
+            'github' => $this->runGithub($doctor, $failOn),
+            'agent' => $this->runAgent($doctor, $failOn),
         };
     }
 
@@ -127,9 +124,9 @@ class DoctorCommand extends Command
      *
      * @param  'fail'|'warn'|'never'  $failOn
      */
-    protected function runCli(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
+    protected function runCli(Doctor $doctor, string $failOn): int
     {
-        $report = $this->runner($doctor, $selection)
+        $report = $this->runner($doctor)
             ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->observeUsing($this->taskObserver()))
             ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
             ->beforeRerun(function (): void {
@@ -159,9 +156,9 @@ class DoctorCommand extends Command
      *
      * @param  'fail'|'warn'|'never'  $failOn
      */
-    protected function runJson(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
+    protected function runJson(Doctor $doctor, string $failOn): int
     {
-        $report = $this->runner($doctor, $selection)->run();
+        $report = $this->runner($doctor)->run();
 
         $this->line(json_encode($report, JSON_THROW_ON_ERROR));
 
@@ -173,9 +170,9 @@ class DoctorCommand extends Command
      *
      * @param  'fail'|'warn'|'never'  $failOn
      */
-    protected function runGithub(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
+    protected function runGithub(Doctor $doctor, string $failOn): int
     {
-        $report = $this->runner($doctor, $selection)->run();
+        $report = $this->runner($doctor)->run();
 
         foreach ((new GithubRenderer)->annotations($report) as $annotation) {
             $this->line($annotation);
@@ -189,9 +186,9 @@ class DoctorCommand extends Command
      *
      * @param  'fail'|'warn'|'never'  $failOn
      */
-    protected function runAgent(Doctor $doctor, DiagnosticSelection $selection, string $failOn): int
+    protected function runAgent(Doctor $doctor, string $failOn): int
     {
-        $report = $this->runner($doctor, $selection)
+        $report = $this->runner($doctor)
             ->when((bool) $this->option('fix'), fn (PendingRun $runner) => $runner->fixUsing(static fn (): bool => true))
             ->run();
 
@@ -201,22 +198,13 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Build the diagnostic selection from command options.
-     */
-    protected function selection(Doctor $doctor): DiagnosticSelection
-    {
-        return $doctor->defaultSelection()->constrain(
-            only: $this->optionList('only'),
-            except: $this->optionList('except'),
-        );
-    }
-
-    /**
      * Begin a run configured from the command options.
      */
-    protected function runner(Doctor $doctor, DiagnosticSelection $selection): PendingRun
+    protected function runner(Doctor $doctor): PendingRun
     {
-        return $doctor->runner($selection)->bail((bool) $this->option('bail'));
+        return $doctor->only(...$this->optionList('only'))
+            ->except(...$this->optionList('except'))
+            ->bail((bool) $this->option('bail'));
     }
 
     /**

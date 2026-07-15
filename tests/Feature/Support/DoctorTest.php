@@ -4,7 +4,6 @@ use Illuminate\Console\Command;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
-use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\DiagnosticSource;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticFixOutcome;
@@ -58,7 +57,7 @@ it('runs registered diagnostics', function (): void {
         WarningDiagnostic::class,
     ]);
 
-    $report = $doctor->run(DiagnosticSelection::make(only: ['testing']));
+    $report = $doctor->only('testing')->run();
 
     expect($report->diagnostics())->toHaveCount(2)
         ->and($report->hasWarnings())->toBeTrue()
@@ -184,7 +183,7 @@ it('does not offer an automatic fix after a fixable diagnostic throws', function
     $doctor = (new Doctor($this->app))->diagnostic(ThrowingFixableDiagnostic::class);
     $offered = false;
 
-    $report = $doctor->runner()
+    $report = $doctor
         ->fixUsing(function (DiagnosticOutcome $outcome) use (&$offered): bool {
             $offered = true;
 
@@ -219,7 +218,7 @@ it('constrains runs with fluent only and except selectors', function (): void {
         PackagedDiagnostic::class,
     ]);
 
-    $report = $doctor->runner()
+    $report = $doctor
         ->only('testing')
         ->except('vendor/package')
         ->run();
@@ -237,7 +236,7 @@ it('intersects repeated fluent only constraints', function (): void {
         PackagedDiagnostic::class,
     ]);
 
-    $report = $doctor->runner()
+    $report = $doctor
         ->only(PassingDiagnostic::class, DatabaseDiagnostic::class)
         ->run();
 
@@ -253,7 +252,7 @@ it('bails after the first failing diagnostic', function (): void {
         DatabaseDiagnostic::class,
     ]);
 
-    $report = $doctor->runner()->bail()->run();
+    $report = $doctor->bail()->run();
 
     expect(array_map(
         static fn (DiagnosticOutcome $outcome): string => $outcome->diagnostic::class,
@@ -270,7 +269,7 @@ it('treats diagnostic errors as failures when bailing', function (): void {
         PassingDiagnostic::class,
     ]);
 
-    $report = $doctor->runner()->bail()->run();
+    $report = $doctor->bail()->run();
 
     expect($report->diagnostics())->toHaveCount(1)
         ->and($report->diagnostics()[0]->diagnostic::class)->toBe(ThrowingDiagnostic::class)
@@ -287,7 +286,7 @@ it('applies approved fixes and re-runs the diagnostics', function (): void {
 
     $rerunning = false;
 
-    $report = $doctor->runner()
+    $report = $doctor
         ->fixUsing(fn (DiagnosticOutcome $outcome): bool => true)
         ->beforeRerun(function () use (&$rerunning): void {
             $rerunning = true;
@@ -307,7 +306,7 @@ it('does not re-run diagnostics when fixes are declined', function (): void {
 
     $rerunning = false;
 
-    $report = $doctor->runner()
+    $report = $doctor
         ->fixUsing(fn (DiagnosticOutcome $outcome): bool => false)
         ->beforeRerun(function () use (&$rerunning): void {
             $rerunning = true;
@@ -328,7 +327,7 @@ it('owns diagnostic execution while allowing progress to be observed', function 
 
     $observed = [];
 
-    $report = $doctor->runner()
+    $report = $doctor
         ->observeUsing(function (string $group, Closure $next) use (&$observed): void {
             $observed[] = 'group:'.$group;
 
@@ -360,7 +359,6 @@ it('owns diagnostic execution while allowing progress to be observed', function 
 it('requires progress observers to continue runner-owned execution', function (): void {
     (new Doctor($this->app))
         ->diagnostic(PassingDiagnostic::class)
-        ->runner()
         ->observeUsing(function (string $group, Closure $next): void {
             // Intentionally do not continue the runner-owned execution.
         })

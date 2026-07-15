@@ -7,9 +7,13 @@ use Illuminate\Support\Facades\Facade;
 /**
  * @method static \Laravel\Doctor\Doctor diagnostic(class-string<\Laravel\Doctor\Diagnostic> $diagnostic)
  * @method static \Laravel\Doctor\Doctor diagnostics(iterable<class-string<\Laravel\Doctor\Diagnostic>> $diagnostics)
- * @method static \Laravel\Doctor\Results\DiagnosticReport run(?\Laravel\Doctor\DiagnosticSelection $selection = null)
- * @method static \Laravel\Doctor\PendingRun runner(?\Laravel\Doctor\DiagnosticSelection $selection = null)
- * @method static \Laravel\Doctor\DiagnosticSelection defaultSelection()
+ * @method static \Laravel\Doctor\Results\DiagnosticReport run()
+ * @method static \Laravel\Doctor\PendingRun only(string ...$selectors)
+ * @method static \Laravel\Doctor\PendingRun except(string ...$selectors)
+ * @method static \Laravel\Doctor\PendingRun bail(bool $bail = true)
+ * @method static \Laravel\Doctor\PendingRun observeUsing(\Closure $callback)
+ * @method static \Laravel\Doctor\PendingRun fixUsing(\Closure $callback)
+ * @method static \Laravel\Doctor\PendingRun beforeRerun(\Closure $callback)
  *
  * @see \Laravel\Doctor\Doctor
  */

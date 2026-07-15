@@ -1,7 +1,6 @@
 <?php
 
 use Laravel\Doctor\Diagnostics\EnvironmentFileExists;
-use Laravel\Doctor\DiagnosticSelection;
 use Laravel\Doctor\Doctor;
 use Laravel\Doctor\Results\DiagnosticOutcome;
 
@@ -21,7 +20,7 @@ it('passes when .env exists', function (): void {
     $this->app->setBasePath($basePath);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['EnvironmentFileExists']));
+        ->only('EnvironmentFileExists')->run();
 
     $outcome = $report->diagnostics()[0];
 
@@ -36,7 +35,7 @@ it('passes when an environment-specific file exists', function (): void {
     $this->app->setBasePath($basePath);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['EnvironmentFileExists']));
+        ->only('EnvironmentFileExists')->run();
 
     expect($report->diagnostics()[0]->result->status->value)->toBe('pass');
 });
@@ -48,7 +47,7 @@ it('reports a missing environment file with guidance when an example exists', fu
     $this->app->setBasePath($basePath);
 
     $report = $this->app->make(Doctor::class)
-        ->run(DiagnosticSelection::make(only: ['EnvironmentFileExists']));
+        ->only('EnvironmentFileExists')->run();
 
     $outcome = $report->diagnostics()[0];
 

@@ -69,7 +69,7 @@ Use `--bail` to stop after the first diagnostic that fails or errors. Warnings, 
 php artisan doctor --bail
 ```
 
-The flag works with every output format and may be combined with diagnostic selectors. Programmatic runs may enable the same behavior with `Doctor::runner()->bail()->run()`.
+The flag works with every output format and may be combined with diagnostic selectors. Programmatic runs may enable the same behavior with `Doctor::bail()->run()`.
 
 ## Selecting Diagnostics
 
@@ -312,23 +312,20 @@ if ($report->hasFailures()) {
 }
 ```
 
-Programmatic runs honor the `only` and `except` selectors from Doctor's configuration file. To narrow a run further, build it using the `runner` method and constrain it with `only` and `except`. Selectors may reference a diagnostic class, class basename, group, or package name — the same values accepted by the command's `--only` and `--except` options:
+Programmatic runs honor the `only` and `except` selectors from Doctor's configuration file. To narrow a run further, constrain it with `only` and `except` before calling `run`. Selectors may reference a diagnostic class, class basename, group, or package name — the same values accepted by the command's `--only` and `--except` options:
 
 ```php
-$report = Doctor::runner()
-    ->only('security')
+$report = Doctor::only('security')
     ->except(SomeDiagnostic::class)
     ->run();
 ```
 
 Repeated `only` calls intersect, so each call narrows the run within the previous constraints.
 
-To apply fixes as part of a run, build the run using the `runner` method. The `fixUsing` callback receives each failing diagnostic that offers a fix and determines whether the fix should be applied. When any fixes are applied, Doctor re-runs the diagnostics so the report reflects the repaired application:
+To apply fixes as part of a run, configure the run with `fixUsing`. The callback receives each failing diagnostic that offers a fix and determines whether the fix should be applied. When any fixes are applied, Doctor re-runs the diagnostics so the report reflects the repaired application:
 
 ```php
-$report = Doctor::runner()
-    ->fixUsing(fn ($outcome) => true)
-    ->run();
+$report = Doctor::fixUsing(fn ($outcome) => true)->run();
 
 $report->fixes();
 ```

@@ -2,6 +2,7 @@
 
 namespace Laravel\Doctor;
 
+use Closure;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -14,6 +15,9 @@ use Laravel\Doctor\Results\FixResult;
 use LogicException;
 use Throwable;
 
+/**
+ * @phpstan-import-type GroupContinuation from PendingRun
+ */
 class Doctor
 {
     /**
@@ -82,23 +86,81 @@ class Doctor
     /**
      * Run the registered diagnostics.
      */
-    public function run(?DiagnosticSelection $selection = null): DiagnosticReport
+    public function run(): DiagnosticReport
     {
-        return $this->runner($selection)->run();
+        return $this->pendingRun()->run();
     }
 
     /**
-     * Begin a new diagnostic run.
+     * Begin a run constrained to diagnostics matching the given selectors.
+     *
+     * Selectors may reference a diagnostic class, class basename, group, or
+     * package name.
      */
-    public function runner(?DiagnosticSelection $selection = null): PendingRun
+    public function only(string ...$selectors): PendingRun
     {
-        return new PendingRun($this, $selection ?? $this->defaultSelection());
+        return $this->pendingRun()->only(...$selectors);
+    }
+
+    /**
+     * Begin a run that excludes diagnostics matching the given selectors.
+     */
+    public function except(string ...$selectors): PendingRun
+    {
+        return $this->pendingRun()->except(...$selectors);
+    }
+
+    /**
+     * Begin a run that stops after the first failing diagnostic.
+     */
+    public function bail(bool $bail = true): PendingRun
+    {
+        return $this->pendingRun()->bail($bail);
+    }
+
+    /**
+     * Begin a run that observes each diagnostic group through the given callback.
+     *
+     * @param  Closure(string, GroupContinuation): void  $callback
+     */
+    public function observeUsing(Closure $callback): PendingRun
+    {
+        return $this->pendingRun()->observeUsing($callback);
+    }
+
+    /**
+     * Begin a run that applies fixes approved by the given callback.
+     *
+     * @param  Closure(DiagnosticOutcome): bool  $callback
+     */
+    public function fixUsing(Closure $callback): PendingRun
+    {
+        return $this->pendingRun()->fixUsing($callback);
+    }
+
+    /**
+     * Begin a run that invokes the given callback when applied fixes require
+     * the diagnostics to be re-run.
+     *
+     * @param  Closure(): void  $callback
+     */
+    public function beforeRerun(Closure $callback): PendingRun
+    {
+        return $this->pendingRun()->beforeRerun($callback);
+    }
+
+    /**
+     * Begin a new pending diagnostic run.
+     */
+    protected function pendingRun(): PendingRun
+    {
+        return new PendingRun($this, $this->defaultSelection());
     }
 
     /**
      * Get the diagnostic selection configured for the application.
      */
-    public function defaultSelection(): DiagnosticSelection
+    protected function defaultSelection(): DiagnosticSelection
     {
         return DiagnosticSelection::make(
             only: array_filter(config()->array('doctor.only', []), is_string(...)),
