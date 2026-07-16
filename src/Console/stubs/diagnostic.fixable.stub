@@ -1,0 +1,47 @@
+<?php
+
+namespace {{ namespace }};
+
+use Laravel\Doctor\Contracts\Fixable;
+use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\FixResult;
+use Laravel\Doctor\Results\Message;
+
+class {{ class }} extends Diagnostic implements Fixable
+{
+    /**
+     * Get the diagnostic's named message definitions.
+     *
+     * @return array<string, string|Message>
+     */
+    protected function messages(): array
+    {
+        return [
+            'passed' => 'The check passed.',
+            'failed' => Message::make(
+                summary: 'The check failed.',
+                remediation: 'Describe how to resolve the failure.',
+                confirmation: 'Apply the fix?',
+            ),
+            'fixed' => 'The failure was fixed.',
+            'fix-failed' => 'The failure could not be fixed.',
+        ];
+    }
+
+    /**
+     * Run the diagnostic.
+     */
+    public function check(): DiagnosticResult
+    {
+        return $this->fail('failed')->fixable();
+    }
+
+    /**
+     * Fix the diagnostic.
+     */
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
+    {
+        return $this->fixed('fixed');
+    }
+}

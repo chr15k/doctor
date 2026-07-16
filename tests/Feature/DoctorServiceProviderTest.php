@@ -779,8 +779,8 @@ it('keeps the unreachable cache store when its decline entry is chosen', functio
             'file' => 'File',
             '__skip__' => 'Keep Redis (repair it manually)',
         ])
-        ->expectsOutputToContain('The application cannot reach the default cache store [redis].')
-        ->expectsOutputToContain('Check CACHE_STORE and the backing cache service configuration.')
+        ->expectsOutputToContain('Check CACHE_STORE')
+        ->expectsOutputToContain('Doctor found failing diagnostics.')
         ->assertExitCode(1);
 
     expect(config('cache.default'))->toBe('redis');

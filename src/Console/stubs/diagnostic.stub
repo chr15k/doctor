@@ -1,0 +1,34 @@
+<?php
+
+namespace {{ namespace }};
+
+use Laravel\Doctor\Diagnostic;
+use Laravel\Doctor\Results\DiagnosticResult;
+use Laravel\Doctor\Results\Message;
+
+class {{ class }} extends Diagnostic
+{
+    /**
+     * Get the diagnostic's named message definitions.
+     *
+     * @return array<string, string|Message>
+     */
+    protected function messages(): array
+    {
+        return [
+            'passed' => 'The check passed.',
+            'failed' => Message::make(
+                summary: 'The check failed.',
+                remediation: 'Describe how to resolve the failure.',
+            ),
+        ];
+    }
+
+    /**
+     * Run the diagnostic.
+     */
+    public function check(): DiagnosticResult
+    {
+        return $this->pass('passed');
+    }
+}

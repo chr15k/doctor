@@ -4,6 +4,7 @@ namespace Laravel\Doctor;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Doctor\Console\DiagnosticMakeCommand;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
 use Laravel\Doctor\Diagnostics\ApplicationTimezoneIsValid;
@@ -85,6 +86,7 @@ class DoctorServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
+                DiagnosticMakeCommand::class,
                 DoctorCommand::class,
             ]);
 

@@ -176,6 +176,12 @@ Doctor ships with a focused suite of diagnostics that cover common configuration
 
 A diagnostic is a single class that, like an Artisan command, can declare its definition as properties. Extend `Laravel\Doctor\Diagnostic` and implement a `check` method that returns a `DiagnosticResult`. When `$name` or `$group` are not set, Doctor derives defaults from the class name.
 
+The `make:diagnostic` Artisan command scaffolds a diagnostic into `app/Doctor/Diagnostics`. The command asks whether the diagnostic should offer a fix, or accepts the `--fixable` option directly:
+
+```bash
+php artisan make:diagnostic HorizonIsRunning --fixable
+```
+
 To offer a fix, implement the `Laravel\Doctor\Contracts\Fixable` contract and mark each repairable failure with `->fixable()`. Doctor only attempts fixes for explicitly fixable `fail` results from diagnostics that implement the contract. Other failures and unexpected `error` results are never fixed automatically. Pass one or more `EnvironmentMode` values to limit where an automatic fix may run, such as `->fixable(EnvironmentMode::Local)` for a developer-machine-only repair.
 
 The following diagnostic checks whether the application key is set. Because Laravel already provides a safe key generator, it implements `Fixable`:
