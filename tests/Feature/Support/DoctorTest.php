@@ -18,6 +18,7 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LocalOnlyFixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\NoticeDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\OptionFixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
@@ -225,6 +226,70 @@ it('keeps unscoped outcomes fixable in production mode', function (): void {
         ->diagnostics()[0];
 
     expect($outcome->fixable())->toBeTrue();
+});
+
+it('applies a fix with the option chosen by the callback', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostic(OptionFixableDiagnostic::class);
+
+    $report = $doctor
+        ->fixUsing(fn (DiagnosticOutcome $outcome): string => 'a')
+        ->run();
+
+    expect($report->fixes())->toHaveCount(1)
+        ->and($report->fixes()[0]->result->summary)->toBe('The option diagnostic was fixed with [a].')
+        ->and(config('doctor-testing.option-fixed'))->toBe('a')
+        ->and($report->hasFailures())->toBeFalse();
+});
+
+it('skips option fixes declined by the callback', function (): void {
+    $doctor = (new Doctor($this->app))->diagnostic(OptionFixableDiagnostic::class);
+
+    $report = $doctor
+        ->fixUsing(fn (DiagnosticOutcome $outcome): bool => false)
+        ->run();
+
+    expect($report->fixes())->toBe([])
+        ->and($report->hasFailures())->toBeTrue()
+        ->and(config('doctor-testing.option-fixed'))->toBeNull();
+});
+
+it('rejects plain approval for outcomes that require a fix option', function (): void {
+    (new Doctor($this->app))
+        ->diagnostic(OptionFixableDiagnostic::class)
+        ->fixUsing(fn (DiagnosticOutcome $outcome): bool => true)
+        ->run();
+})->throws(LogicException::class, 'requires a fix option');
+
+it('rejects undeclared fix option values', function (): void {
+    (new Doctor($this->app))->fix(new DiagnosticOutcome(
+        new OptionFixableDiagnostic,
+        (new OptionFixableDiagnostic)->check(),
+    ), 'nope');
+})->throws(LogicException::class, 'is not declared');
+
+it('rejects fix options for outcomes that do not declare them', function (): void {
+    (new Doctor($this->app))->fix(new DiagnosticOutcome(
+        new FixableDiagnostic,
+        (new FixableDiagnostic)->check(),
+    ), 'a');
+})->throws(LogicException::class, 'does not accept a fix option');
+
+it('determines whether a fix requires an option', function (): void {
+    $plain = new DiagnosticOutcome(new FixableDiagnostic, (new FixableDiagnostic)->check());
+    $options = new DiagnosticOutcome(new OptionFixableDiagnostic, (new OptionFixableDiagnostic)->check());
+    $scoped = new DiagnosticOutcome(
+        new OptionFixableDiagnostic,
+        DiagnosticResult::fail('The option diagnostic failed.')
+            ->fixable(EnvironmentMode::Local)
+            ->fixOptions(['a' => 'Option A']),
+    );
+
+    expect($plain->fixRequiresOption())->toBeFalse()
+        ->and($options->fixRequiresOption())->toBeTrue();
+
+    $this->app->detectEnvironment(fn (): string => 'production');
+
+    expect($scoped->fixRequiresOption())->toBeFalse();
 });
 
 it('turns fix exceptions into helpful error results', function (): void {

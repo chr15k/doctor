@@ -43,6 +43,14 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
     }
 
     /**
+     * Determine whether the fix requires choosing one of the result's options.
+     */
+    public function fixRequiresOption(): bool
+    {
+        return $this->fixable() && $this->result->fixOptions !== [];
+    }
+
+    /**
      * Get the array representation of the outcome.
      *
      * @return array<string, mixed>
@@ -64,6 +72,7 @@ class DiagnosticOutcome implements Arrayable, JsonSerializable
             'code' => $this->result->code,
             'status' => $this->result->status->value,
             'fixable' => $this->fixable(),
+            'options' => $this->result->fixOptions,
             'summary' => $this->result->summary,
             'details' => $this->result->details,
             'remediation' => $this->result->remediation,

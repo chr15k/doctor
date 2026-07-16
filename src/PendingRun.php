@@ -28,7 +28,7 @@ class PendingRun
     /**
      * The callback that determines whether a failing diagnostic should be fixed.
      *
-     * @var (Closure(DiagnosticOutcome): bool)|null
+     * @var (Closure(DiagnosticOutcome): (bool|string))|null
      */
     protected ?Closure $fix = null;
 
@@ -107,7 +107,11 @@ class PendingRun
     /**
      * Apply fixes approved by the given callback.
      *
-     * @param  Closure(DiagnosticOutcome): bool  $callback
+     * The callback may return false to skip the fix, true to apply a plain
+     * fix, or one of the result's fix option values to apply the fix with
+     * that choice.
+     *
+     * @param  Closure(DiagnosticOutcome): (bool|string)  $callback
      */
     public function fixUsing(Closure $callback): self
     {
@@ -241,7 +245,7 @@ class PendingRun
     /**
      * Apply the approved fixes for the report's failing diagnostics.
      *
-     * @param  Closure(DiagnosticOutcome): bool  $fix
+     * @param  Closure(DiagnosticOutcome): (bool|string)  $fix
      * @return list<DiagnosticFixOutcome>
      */
     protected function fixes(DiagnosticReport $report, Closure $fix): array
@@ -253,9 +257,13 @@ class PendingRun
                 continue;
             }
 
-            if ($fix($outcome)) {
-                $fixes[] = $this->doctor->fix($outcome);
+            $decision = $fix($outcome);
+
+            if ($decision === false) {
+                continue;
             }
+
+            $fixes[] = $this->doctor->fix($outcome, is_string($decision) ? $decision : null);
         }
 
         return $fixes;

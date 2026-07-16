@@ -106,7 +106,7 @@ class ComposerLockIsFresh extends Diagnostic implements Fixable
     /**
      * Fix the diagnostic.
      */
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         $arguments = match ($result->code) {
             'composer-lock-is-fresh.lock-missing' => ['install'],

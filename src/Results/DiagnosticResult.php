@@ -47,6 +47,22 @@ class DiagnosticResult
     public ?string $confirmation = null;
 
     /**
+     * The choices for the diagnostic's fix, keyed by option value.
+     *
+     * An empty list means the fix needs no choice.
+     *
+     * @var array<string, string>
+     */
+    public array $fixOptions = [];
+
+    /**
+     * The label for the select entry that declines a fix offering options.
+     *
+     * Null renders the generic skip entry.
+     */
+    public ?string $fixDeclineLabel = null;
+
+    /**
      * Create a new diagnostic result instance.
      */
     public function __construct(
@@ -146,6 +162,20 @@ class DiagnosticResult
     {
         $this->fixable = true;
         $this->fixableEnvironments = array_values($environments);
+
+        return $this;
+    }
+
+    /**
+     * Offer a choice of repairs for the diagnostic's fix.
+     *
+     * @param  array<string, string>  $options  Labels keyed by option value.
+     * @param  string|null  $decline  Label for the entry that declines the fix.
+     */
+    public function fixOptions(array $options, ?string $decline = null): static
+    {
+        $this->fixOptions = $options;
+        $this->fixDeclineLabel = $decline;
 
         return $this;
     }

@@ -31,7 +31,7 @@ class DatabaseConnectionIsReachable extends Diagnostic
             'not-configured' => 'The application does not have a default database connection configured.',
             'connection-missing' => 'The default database connection [{connection}] is not configured.',
             'unreachable' => Message::make(
-                summary: 'The application cannot connect to the default database connection.',
+                summary: 'The application cannot connect to the default database connection [{connection}].',
                 remediation: 'Check DB_CONNECTION and the database credentials in your environment file.',
             )->link(Link::docs('database', 'configuration')),
             'reachable' => 'The application can connect to the default database connection.',
@@ -58,7 +58,7 @@ class DatabaseConnectionIsReachable extends Diagnostic
         try {
             $this->probe($connection, $configuration);
         } catch (Throwable $e) {
-            return $this->fail('unreachable')
+            return $this->fail('unreachable', ['connection' => $connection])
                 ->withDetails($e->getMessage());
         }
 

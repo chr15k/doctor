@@ -131,7 +131,7 @@ class Doctor
     /**
      * Begin a run that applies fixes approved by the given callback.
      *
-     * @param  Closure(DiagnosticOutcome): bool  $callback
+     * @param  Closure(DiagnosticOutcome): (bool|string)  $callback
      */
     public function fixUsing(Closure $callback): PendingRun
     {
@@ -186,7 +186,7 @@ class Doctor
     /**
      * Run the fix for a diagnostic outcome.
      */
-    public function fix(DiagnosticOutcome $outcome): DiagnosticFixOutcome
+    public function fix(DiagnosticOutcome $outcome, ?string $option = null): DiagnosticFixOutcome
     {
         $diagnostic = $outcome->diagnostic;
 
@@ -198,8 +198,22 @@ class Doctor
             throw new LogicException(sprintf('Diagnostic outcome [%s] is not fixable.', $outcome->result->code ?? $diagnostic::class));
         }
 
+        $options = $outcome->result->fixOptions;
+
+        if ($option === null && $options !== []) {
+            throw new LogicException(sprintf('Diagnostic outcome [%s] requires a fix option.', $outcome->result->code ?? $diagnostic::class));
+        }
+
+        if ($option !== null && $options === []) {
+            throw new LogicException(sprintf('Diagnostic outcome [%s] does not accept a fix option.', $outcome->result->code ?? $diagnostic::class));
+        }
+
+        if ($option !== null && ! array_key_exists($option, $options)) {
+            throw new LogicException(sprintf('Fix option [%s] is not declared for diagnostic outcome [%s].', $option, $outcome->result->code ?? $diagnostic::class));
+        }
+
         try {
-            $result = $diagnostic->fix($outcome->result);
+            $result = $diagnostic->fix($outcome->result, $option);
         } catch (Throwable $e) {
             $result = FixResult::error(
                 sprintf('Failed to fix %s: %s', $diagnostic->name, $e->getMessage()),

@@ -35,13 +35,15 @@ Storage is writable: The application cannot write to every required storage dire
  Make the storage directories writable? (yes/no) [yes]
 ```
 
+Some fixes offer a choice of repairs instead of a yes/no confirmation. When the default cache store is unreachable on a developer machine, for example, Doctor presents a select list of the configured stores that actually work, along with an entry to keep the current store and repair it manually — declining the switch leaves the failure in the report with its remediation text.
+
 To run available fixes without prompting, pass the `--fix` option:
 
 ```bash
 php artisan doctor --fix
 ```
 
-First-party fixes cover deterministic local repairs such as creating a missing `.env`, generating `APP_KEY`, disabling production debug mode, adding `.env` to `.gitignore`, creating the public storage link, and repairing writable storage directories.
+First-party fixes cover deterministic local repairs such as creating a missing `.env`, generating `APP_KEY`, disabling production debug mode, adding `.env` to `.gitignore`, creating the public storage link, and repairing writable storage directories. Because `--fix` never prompts, it applies every fix that does not require a choice; fixes that need one are reported as ordinary failures with their remediation text.
 
 > [!NOTE]
 > Fixes are only available with the CLI and agent [output formats](#output-formats). With agent output, `--fix` applies every available deterministic fix and reports the outcomes in the payload's `fixes` array. Doctor rejects `--fix` with the JSON and GitHub report formats so machine-readable reports never mutate the application.
@@ -275,6 +277,29 @@ Reserve tokens for short identifying values such as versions, paths, and counts.
 
 If the check gathers state the fix will need, store it with `withContext()` on the result. Mark only outcomes the fix can handle with `fixable()`, and only implement `Fixable` when the repair is predictable and safe. Scope a fix to `EnvironmentMode::Local` to limit fixes to a development environment.
 
+When a failure has several valid repairs and the right one is a human decision, declare the choices with `fixOptions()` after `fixable()`. The interactive CLI renders them as a select list using the result's confirmation text as the prompt label, and the chosen option value is passed to `fix()`:
+
+```php
+return $this->fail('unreachable')
+    ->fixable(EnvironmentMode::Local)
+    ->fixOptions(['file' => 'File', 'redis' => 'Redis']);
+```
+
+```php
+public function fix(DiagnosticResult $result, ?string $option = null): FixResult
+{
+    // $option is one of the declared option values...
+}
+```
+
+Compute the options in `check()` and filter them to choices that will actually succeed — probe candidate services, verify client packages, and drop anything that would fail — so the select list only offers working repairs. A result with no viable options should stay non-fixable and rely on its remediation text.
+
+Every select list ends with an entry that declines the fix, `Skip — leave unfixed` by default. Pass a `decline` label when naming the current selection reads better, such as `Keep Redis (repair it manually)` — choosing it applies nothing, so the failure renders with its remediation:
+
+```php
+->fixOptions(['file' => 'File'], decline: 'Keep Redis (repair it manually)');
+```
+
 ### Diagnostic Helpers
 
 Many applications and packages end up writing the same kinds of checks, so Doctor provides helpers in the `Laravel\Doctor\Support` namespace for the recurring mechanics. Reach for these before re-implementing the logic inside a diagnostic.
@@ -395,13 +420,17 @@ $report = Doctor::only('security')
 
 Repeated `only` calls intersect, so each call narrows the run within the previous constraints.
 
-To apply fixes as part of a run, configure the run with `fixUsing`. The callback receives each failing diagnostic that offers a fix and determines whether the fix should be applied. When any fixes are applied, Doctor re-runs the diagnostics so the report reflects the repaired application:
+To apply fixes as part of a run, configure the run with `fixUsing`. The callback receives each failing diagnostic that offers a fix and decides what to do: return `false` to skip the fix, `true` to apply a plain fix, or one of the result's fix option values to apply the fix with that choice. When any fixes are applied, Doctor re-runs the diagnostics so the report reflects the repaired application:
 
 ```php
-$report = Doctor::fixUsing(fn ($outcome) => true)->run();
+$report = Doctor::fixUsing(
+    fn ($outcome) => $outcome->fixRequiresOption() ? false : true,
+)->run();
 
 $report->fixes();
 ```
+
+Returning `true` for an outcome whose result declares fix options throws a `LogicException` — a choice-based fix never runs without a choice.
 
 ## Output Formats
 
@@ -421,7 +450,7 @@ When Doctor detects that it is running inside an AI coding agent such as Claude 
 {"tool":"doctor","result":"failed","diagnostics":27,"failed":1,"warnings":1,"notices":0,"passed":19,"skipped":6,"issues":[{"name":".env file exists","status":"fail","summary":"The application does not have an environment file.","fix":"Run `cp .env.example .env`, then review the copied values.","fixable":true}]}
 ```
 
-Issues marked `fixable` may be fixed by re-running Doctor with `--fix`, which applies every available deterministic fix, re-runs the diagnostics, and appends the fix outcomes to the payload.
+Issues marked `fixable` may be fixed by re-running Doctor with `--fix`, which applies every available deterministic fix, re-runs the diagnostics, and appends the fix outcomes to the payload. Issues that carry an `options` map instead of the `fixable` flag require a choice `--fix` will not make: the agent should apply the change itself following the issue's `fix` remediation, or escalate the shortlist of options to a human.
 
 An explicit `--format` option always overrides detection, and the agent format may also be requested directly:
 

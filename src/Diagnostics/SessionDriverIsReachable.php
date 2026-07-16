@@ -30,7 +30,7 @@ class SessionDriverIsReachable extends Diagnostic
         return [
             'not-configured' => 'The application does not have a default session driver configured.',
             'unreachable' => Message::make(
-                summary: 'The application cannot reach the default session driver.',
+                summary: 'The application cannot reach the default session driver [{driver}].',
                 remediation: 'Check SESSION_DRIVER and the backing session store configuration.',
             )->link(Link::docs('session', 'configuration')),
             'reachable' => 'The application can reach the default session driver.',
@@ -51,7 +51,7 @@ class SessionDriverIsReachable extends Diagnostic
         try {
             $this->probe($driver);
         } catch (Throwable $e) {
-            return $this->fail('unreachable')
+            return $this->fail('unreachable', ['driver' => $driver])
                 ->withDetails($e->getMessage());
         }
 

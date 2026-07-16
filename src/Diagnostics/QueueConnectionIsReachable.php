@@ -30,7 +30,7 @@ class QueueConnectionIsReachable extends Diagnostic
         return [
             'not-configured' => 'The application does not have a default queue connection configured.',
             'unreachable' => Message::make(
-                summary: 'The application cannot reach the default queue connection.',
+                summary: 'The application cannot reach the default queue connection [{connection}].',
                 remediation: 'Check QUEUE_CONNECTION and the backing queue service configuration.',
             )->link(Link::docs('queues')),
             'reachable' => 'The application can reach the default queue connection.',
@@ -51,7 +51,7 @@ class QueueConnectionIsReachable extends Diagnostic
         try {
             $this->probe($connection, $this->configuration($connection));
         } catch (Throwable $e) {
-            return $this->fail('unreachable')
+            return $this->fail('unreachable', ['connection' => $connection])
                 ->withDetails($e->getMessage());
         }
 

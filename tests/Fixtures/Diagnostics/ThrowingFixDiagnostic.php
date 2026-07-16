@@ -22,7 +22,7 @@ class ThrowingFixDiagnostic extends Diagnostic implements Fixable
             ->suggest('Apply the testing diagnostic fix.');
     }
 
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         throw new RuntimeException('permission denied');
     }

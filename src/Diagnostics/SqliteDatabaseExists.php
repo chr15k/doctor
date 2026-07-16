@@ -71,7 +71,7 @@ class SqliteDatabaseExists extends Diagnostic implements Fixable
     /**
      * Fix the diagnostic.
      */
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         /** @var string $database */
         $database = $result->context['database'];

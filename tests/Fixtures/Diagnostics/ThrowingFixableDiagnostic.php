@@ -19,7 +19,7 @@ class ThrowingFixableDiagnostic extends Diagnostic implements Fixable
         throw new RuntimeException('The fixable diagnostic exploded.');
     }
 
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         return FixResult::pass('The diagnostic was fixed.');
     }

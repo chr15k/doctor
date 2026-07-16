@@ -56,6 +56,10 @@ class AgentRenderer
     /**
      * Build the payload entry for an actionable diagnostic outcome.
      *
+     * The fixable flag is an instruction to re-run with --fix, so fixes that
+     * require a choice omit it and expose their options instead, letting the
+     * agent apply the change itself or escalate a concrete shortlist.
+     *
      * @return array<string, mixed>
      */
     protected function issue(DiagnosticOutcome $outcome): array
@@ -66,7 +70,8 @@ class AgentRenderer
             'summary' => $outcome->result->summary,
             'details' => $outcome->result->details,
             'fix' => $outcome->result->remediation,
-            'fixable' => $outcome->fixable() ?: null,
+            'fixable' => ($outcome->fixable() && ! $outcome->fixRequiresOption()) ?: null,
+            'options' => $outcome->result->fixOptions,
             'links' => array_column($outcome->result->links, 'agentUrl', 'label'),
         ], static fn (mixed $value): bool => $value !== null && $value !== []);
     }

@@ -28,7 +28,7 @@ class FilesystemDisksAreReachable extends Diagnostic
             'not-configured' => 'The application does not have a default filesystem disk configured.',
             'disk-missing' => 'The default filesystem disk [{disk}] is not configured.',
             'unreachable' => Message::make(
-                summary: 'The application cannot reach the default filesystem disk.',
+                summary: 'The application cannot reach the default filesystem disk [{disk}].',
                 remediation: 'Check filesystem disk roots, credentials, and network access.',
             )->link(Link::docs('filesystem', 'configuration')),
             'reachable' => 'The application can reach the default filesystem disk.',
@@ -55,7 +55,7 @@ class FilesystemDisksAreReachable extends Diagnostic
         try {
             $this->probe($disk, $configuration);
         } catch (Throwable $e) {
-            return $this->fail('unreachable')
+            return $this->fail('unreachable', ['disk' => $disk])
                 ->withDetails($e->getMessage());
         }
 

@@ -4,6 +4,7 @@ namespace Laravel\Doctor\Console;
 
 use Closure;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Config\Repository;
 use Laravel\AgentDetector\AgentDetector;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\Doctor;
@@ -18,6 +19,7 @@ use Laravel\Prompts\Support\Logger;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\info;
+use function Laravel\Prompts\select;
 use function Laravel\Prompts\task;
 use function Laravel\Prompts\warning;
 
@@ -26,6 +28,11 @@ use function Laravel\Prompts\warning;
  */
 class DoctorCommand extends Command
 {
+    /**
+     * The select entry that declines a fix requiring a choice.
+     */
+    protected const SKIP_FIX = '__skip__';
+
     protected $signature = 'doctor
         {--only=* : Run only the specified diagnostic classes, groups, or packages}
         {--except=* : Skip the specified diagnostic classes, groups, or packages}
@@ -44,21 +51,39 @@ class DoctorCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(Doctor $doctor): int
+    public function handle(Doctor $doctor, Repository $config): int
     {
-        $format = $this->format();
-        $failOn = $this->failOn();
+        try {
+            $format = $this->format();
+            $failOn = $this->failOn();
 
-        if ($format === null || $failOn === null || ! $this->fixOptionIsValidFor($format)) {
-            return self::FAILURE;
+            if ($format === null || $failOn === null || ! $this->fixOptionIsValidFor($format)) {
+                return self::FAILURE;
+            }
+
+            return match ($format) {
+                'cli' => $this->runCli($doctor, $failOn),
+                'json' => $this->runJson($doctor, $failOn),
+                'github' => $this->runGithub($doctor, $failOn),
+                'agent' => $this->runAgent($doctor, $failOn),
+            };
+        } finally {
+            $this->ensureValidTimezoneForTermination($config);
+        }
+    }
+
+    /**
+     * Prevent an invalid application timezone from crashing Laravel's command termination.
+     */
+    protected function ensureValidTimezoneForTermination(Repository $config): void
+    {
+        $timezone = $config->get('app.timezone');
+
+        if (is_string($timezone) && in_array($timezone, timezone_identifiers_list(), true)) {
+            return;
         }
 
-        return match ($format) {
-            'cli' => $this->runCli($doctor, $failOn),
-            'json' => $this->runJson($doctor, $failOn),
-            'github' => $this->runGithub($doctor, $failOn),
-            'agent' => $this->runAgent($doctor, $failOn),
-        };
+        $config->set('app.timezone', date_default_timezone_get());
     }
 
     /**
@@ -128,7 +153,7 @@ class DoctorCommand extends Command
     {
         $report = $this->runner($doctor)
             ->when($this->shouldUseTasks(), fn (PendingRun $runner) => $runner->observeUsing($this->taskObserver()))
-            ->fixUsing(fn (DiagnosticOutcome $outcome): bool => $this->shouldApplyFix($outcome))
+            ->fixUsing(fn (DiagnosticOutcome $outcome): bool|string => $this->fixDecision($outcome))
             ->beforeRerun(function (): void {
                 $this->restorePrompts();
 
@@ -189,7 +214,9 @@ class DoctorCommand extends Command
     protected function runAgent(Doctor $doctor, string $failOn): int
     {
         $report = $this->runner($doctor)
-            ->when((bool) $this->option('fix'), fn (PendingRun $runner) => $runner->fixUsing(static fn (): bool => true))
+            ->when((bool) $this->option('fix'), fn (PendingRun $runner) => $runner->fixUsing(
+                static fn (DiagnosticOutcome $outcome): bool => ! $outcome->fixRequiresOption(),
+            ))
             ->run();
 
         $this->line((new AgentRenderer)->render($report));
@@ -279,10 +306,14 @@ class DoctorCommand extends Command
     }
 
     /**
-     * Determine whether a fix should be applied.
+     * Decide whether a fix should be applied and with which option.
      */
-    protected function shouldApplyFix(DiagnosticOutcome $outcome): bool
+    protected function fixDecision(DiagnosticOutcome $outcome): bool|string
     {
+        if ($outcome->fixRequiresOption()) {
+            return $this->chooseFix($outcome);
+        }
+
         if ((bool) $this->option('fix')) {
             return true;
         }
@@ -296,6 +327,35 @@ class DoctorCommand extends Command
         $this->renderer()->renderFixConfirmation($outcome);
 
         return confirm($this->confirmationPrompt($outcome), default: true);
+    }
+
+    /**
+     * Let the user choose between the fix options or decline the fix.
+     *
+     * Fixes that require a choice are never applied under --fix or without
+     * an interactive terminal; the failure renders with its remediation.
+     */
+    protected function chooseFix(DiagnosticOutcome $outcome): bool|string
+    {
+        if (! $this->input->isInteractive()) {
+            return false;
+        }
+
+        $this->restorePrompts();
+
+        $this->renderer()->renderFixConfirmation($outcome);
+
+        $choice = select(
+            label: $this->confirmationPrompt($outcome),
+            options: [
+                ...$outcome->result->fixOptions,
+                self::SKIP_FIX => $outcome->result->fixDeclineLabel ?? 'Skip — leave unfixed',
+            ],
+        );
+
+        // PHP coerces numeric-string array keys to integers, so restore the
+        // declared string option value before it flows back to the runner.
+        return $choice === self::SKIP_FIX ? false : (string) $choice;
     }
 
     /**
@@ -316,7 +376,9 @@ class DoctorCommand extends Command
     protected function confirmationPrompt(DiagnosticOutcome $outcome): string
     {
         return $outcome->result->confirmation
-            ?? sprintf('Fix "%s"?', $outcome->diagnostic->name);
+            ?? ($outcome->fixRequiresOption()
+                ? sprintf('How should "%s" be fixed?', $outcome->diagnostic->name)
+                : sprintf('Fix "%s"?', $outcome->diagnostic->name));
     }
 
     /**

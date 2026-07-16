@@ -63,7 +63,7 @@ class EnvironmentFileExists extends Diagnostic implements Fixable
     /**
      * Fix the diagnostic.
      */
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         $target = base_path('.env');
         $example = base_path('.env.example');

@@ -42,6 +42,7 @@ use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\FixesSharedStateDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LinkedDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\LocalOnlyFixableDiagnostic;
+use Laravel\Doctor\Tests\Fixtures\Diagnostics\OptionFixableDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PackagedNoticeDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\PassingDiagnostic;
 use Laravel\Doctor\Tests\Fixtures\Diagnostics\SharedStateWasFixedDiagnostic;
@@ -71,6 +72,28 @@ it('loads the default doctor configuration', function (): void {
             'local' => ['local'],
             'production' => ['production', 'staging'],
         ]);
+});
+
+it('allows Laravel to terminate the command when the application timezone is invalid', function (): void {
+    config(['app.timezone' => 'Invalid/Timezone']);
+
+    $input = new ArrayInput([
+        'command' => 'doctor',
+        '--only' => ['ApplicationTimezoneIsValid'],
+        '--no-interaction' => true,
+    ]);
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+    $kernel = $this->app->make(Kernel::class);
+
+    $exitCode = $kernel->handle($input, $output);
+
+    expect($output->fetch())
+        ->toContain('Invalid/Timezone')
+        ->toContain('valid PHP timezone.')
+        ->and($exitCode)->toBe(1)
+        ->and(config('app.timezone'))->toBe(date_default_timezone_get());
+
+    $kernel->terminate($input, $exitCode);
 });
 
 it('does not repeat diagnostics that were fixed', function (): void {
@@ -700,6 +723,117 @@ it('applies fixes and reruns for agent output when requested', function (): void
         ]])
         ->and($payload)->not->toHaveKey('issues')
         ->and($exitCode)->toBe(0);
+});
+
+it('applies the fix option selected interactively', function (): void {
+    Doctor::diagnostic(OptionFixableDiagnostic::class);
+
+    $this->artisan('doctor --only=OptionFixableDiagnostic')
+        ->expectsChoice('Which option should fix the diagnostic?', 'a', [
+            'a' => 'Option A',
+            'b' => 'Option B',
+            '__skip__' => 'Skip — leave unfixed',
+        ])
+        ->expectsOutputToContain('The option diagnostic was fixed with [a].')
+        ->expectsOutputToContain('All diagnostics passed or were fixed.')
+        ->assertExitCode(0);
+
+    expect(config('doctor-testing.option-fixed'))->toBe('a');
+});
+
+it('skips the fix when the interactive choice declines it', function (): void {
+    Doctor::diagnostic(OptionFixableDiagnostic::class);
+
+    $this->artisan('doctor --only=OptionFixableDiagnostic')
+        ->expectsChoice('Which option should fix the diagnostic?', '__skip__', [
+            'a' => 'Option A',
+            'b' => 'Option B',
+            '__skip__' => 'Skip — leave unfixed',
+        ])
+        ->expectsOutputToContain('The option diagnostic failed.')
+        ->assertExitCode(1);
+
+    expect(config('doctor-testing.option-fixed'))->toBeNull();
+});
+
+it('keeps the unreachable cache store when its decline entry is chosen', function (): void {
+    // Prompt interception requires the app to stay in the testing environment,
+    // so map it to local mode instead of re-detecting the environment.
+    config(['doctor.environments' => ['local' => ['testing']]]);
+
+    $path = sys_get_temp_dir().'/laravel-doctor-decline-'.str_replace('.', '', uniqid('', true));
+
+    mkdir($path, 0775, true);
+
+    config(['cache' => [
+        'default' => 'redis',
+        'prefix' => '',
+        'stores' => [
+            'redis' => ['driver' => 'broken-driver'],
+            'file' => ['driver' => 'file', 'path' => $path],
+        ],
+    ]]);
+
+    $this->artisan('doctor --only=CacheStoreIsReachable')
+        ->expectsChoice('Which cache store should the application use?', '__skip__', [
+            'file' => 'File',
+            '__skip__' => 'Keep Redis (repair it manually)',
+        ])
+        ->expectsOutputToContain('The application cannot reach the default cache store [redis].')
+        ->expectsOutputToContain('Check CACHE_STORE and the backing cache service configuration.')
+        ->assertExitCode(1);
+
+    expect(config('cache.default'))->toBe('redis');
+});
+
+it('leaves fixes that require a choice unfixed under --fix', function (): void {
+    Doctor::diagnostic(OptionFixableDiagnostic::class);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => 'OptionFixableDiagnostic',
+        '--fix' => true,
+        '--no-interaction' => true,
+    ], $output);
+
+    expect($output->fetch())
+        ->toContain('The option diagnostic failed.')
+        ->toContain('Apply one of the diagnostic fix options.')
+        ->and(config('doctor-testing.option-fixed'))->toBeNull()
+        ->and($exitCode)->toBe(1);
+});
+
+it('exposes fix options instead of the fixable flag in agent output', function (): void {
+    Doctor::diagnostic(OptionFixableDiagnostic::class);
+    Doctor::diagnostic(FixesSharedStateDiagnostic::class);
+
+    config(['doctor-testing.shared-state-fixed' => false]);
+
+    $output = new BufferedOutput(OutputInterface::VERBOSITY_NORMAL, false);
+
+    $exitCode = $this->app->make(Kernel::class)->call('doctor', [
+        '--only' => ['OptionFixableDiagnostic', 'FixesSharedStateDiagnostic'],
+        '--format' => 'agent',
+        '--fix' => true,
+    ], $output);
+
+    $payload = json_decode(trim($output->fetch()), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['issues'])->toBe([[
+        'name' => 'Testing diagnostic offers fix options',
+        'status' => 'fail',
+        'summary' => 'The option diagnostic failed.',
+        'fix' => 'Apply one of the diagnostic fix options.',
+        'options' => ['a' => 'Option A', 'b' => 'Option B'],
+    ]])
+        ->and($payload['fixes'])->toBe([[
+            'name' => 'Testing diagnostic fixes shared state',
+            'status' => 'pass',
+            'summary' => 'The shared state fix ran.',
+        ]])
+        ->and(config('doctor-testing.option-fixed'))->toBeNull()
+        ->and($exitCode)->toBe(1);
 });
 
 it('validates fail-on before running diagnostics', function (): void {

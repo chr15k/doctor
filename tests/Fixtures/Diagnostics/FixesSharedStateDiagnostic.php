@@ -25,7 +25,7 @@ class FixesSharedStateDiagnostic extends Diagnostic implements Fixable
             ->confirmUsing('Fix the shared state?');
     }
 
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         config(['doctor-testing.shared-state-fixed' => true]);
 

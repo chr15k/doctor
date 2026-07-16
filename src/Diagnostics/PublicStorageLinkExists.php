@@ -61,7 +61,7 @@ class PublicStorageLinkExists extends Diagnostic implements Fixable
     /**
      * Fix the diagnostic.
      */
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         $process = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'storage:link']);
 

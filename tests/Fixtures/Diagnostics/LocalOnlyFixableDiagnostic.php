@@ -22,7 +22,7 @@ class LocalOnlyFixableDiagnostic extends Diagnostic implements Fixable
             ->suggest('Apply the local testing diagnostic fix.');
     }
 
-    public function fix(DiagnosticResult $result): FixResult
+    public function fix(DiagnosticResult $result, ?string $option = null): FixResult
     {
         return FixResult::pass('The local diagnostic was fixed.');
     }
