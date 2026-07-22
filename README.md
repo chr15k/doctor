@@ -386,11 +386,11 @@ Packages use the same registration API from their service providers:
 
 ```php
 use Laravel\Doctor\Facades\Doctor;
-use Vendor\Package\Diagnostics\ApplicationKeyIsSet;
+use Vendor\Package\Diagnostics\HorizonIsRunning;
 
 public function boot(): void
 {
-    Doctor::diagnostic(ApplicationKeyIsSet::class);
+    Doctor::diagnostic(HorizonIsRunning::class);
 }
 ```
 

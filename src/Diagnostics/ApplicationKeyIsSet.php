@@ -2,8 +2,8 @@
 
 namespace Laravel\Doctor\Diagnostics;
 
-use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Doctor\Contracts\Fixable;
 use Laravel\Doctor\Diagnostic;
 use Laravel\Doctor\EnvironmentMode;
@@ -11,6 +11,7 @@ use Laravel\Doctor\Results\DiagnosticResult;
 use Laravel\Doctor\Results\FixResult;
 use Laravel\Doctor\Results\Link;
 use Laravel\Doctor\Results\Message;
+use Laravel\Doctor\Support\Details;
 
 class ApplicationKeyIsSet extends Diagnostic implements Fixable
 {
@@ -61,18 +62,20 @@ class ApplicationKeyIsSet extends Diagnostic implements Fixable
                 ->withDetails(sprintf('The application environment file [%s] could not be updated.', $path));
         }
 
-        $cipher = config('app.cipher');
+        // key:generate can only replace an existing APP_KEY entry. This leaves
+        // existing values untouched while adding the blank entry it requires.
+        Env::writeVariable('APP_KEY', '', $path);
 
-        if (! is_string($cipher) || $cipher === '') {
+        Artisan::call('key:generate', ['--force' => true]);
+
+        if (! $this->keyIsConfigured()) {
             return $this->fixFailed('generation-failed')
-                ->withDetails('The application encryption cipher is not configured.');
+                ->withDetails(Details::processOutput(
+                    Artisan::output(),
+                    '',
+                    'The key:generate command did not set an application key.',
+                ));
         }
-
-        $key = 'base64:'.base64_encode(Encrypter::generateKey($cipher));
-
-        Env::writeVariable('APP_KEY', $key, $path, overwrite: true);
-
-        config(['app.key' => $key]);
 
         return $this->fixed('generated');
     }
