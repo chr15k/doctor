@@ -7,6 +7,7 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Doctor\Console\DiagnosticMakeCommand;
 use Laravel\Doctor\Console\DoctorCommand;
 use Laravel\Doctor\Diagnostics\ApplicationKeyIsSet;
+use Laravel\Doctor\Diagnostics\ApplicationRoutesAreValid;
 use Laravel\Doctor\Diagnostics\ApplicationTimezoneIsValid;
 use Laravel\Doctor\Diagnostics\BootstrapCacheMatchesEnvironment;
 use Laravel\Doctor\Diagnostics\CacheStoreIsReachable;
@@ -75,6 +76,7 @@ class DoctorServiceProvider extends ServiceProvider
                 DebugModeMatchesEnvironment::class,
                 EnvironmentFileIsGitIgnored::class,
                 ComposerAuditPasses::class,
+                ApplicationRoutesAreValid::class,
             ]);
         });
     }
